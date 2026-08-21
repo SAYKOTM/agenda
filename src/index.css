@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Colores de estado de cita (fase 3+): fijos, no dependen del tema del tenant. */
+  --color-status-confirmed-bg: #e9ebfd;
+  --color-status-confirmed-ink: #3730a3;
+  --color-status-confirmed-bar: #4f46e5;
+  --color-status-pending-bg: #fef2e0;
+  --color-status-pending-ink: #96540e;
+  --color-status-pending-bar: #e0891b;
+  --color-status-done-bg: #e7f4ec;
+  --color-status-done-ink: #1e6b43;
+  --color-status-done-bar: #2c8b58;
+  --color-status-cancelled-bg: #f2f4f7;
+  --color-status-cancelled-ink: #64748b;
+  --color-status-cancelled-bar: #a3aec0;
+  --color-status-noshow-bg: #fbe7e4;
+  --color-status-noshow-ink: #a33421;
+  --color-status-noshow-bar: #d45b44;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:#F1F2F5;font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+input,textarea,select{font:inherit}
+:focus-visible{outline:2px solid #0F172A;outline-offset:2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#CBD0DB;border-radius:8px;border:3px solid transparent;background-clip:content-box}
