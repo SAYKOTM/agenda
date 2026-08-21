@@ -64,7 +64,7 @@ export default function PanelTeam() {
                       <span className={'rounded-[7px] px-2 py-0.5 text-[10.5px] font-bold ' + (p.active ? 'bg-[#E7F4EC] text-[#1E6B43]' : 'bg-[#F2F4F7] text-[#64748B]')}>{p.active ? 'Activo' : 'Suspendido'}</span>
                       {p.role === 'admin' && <span className="rounded-[7px] bg-[#E9EBFD] px-2 py-0.5 text-[10.5px] font-bold text-[#3730A3]">Admin</span>}
                     </div>
-                    <div className="truncate text-[11.5px] text-[#64748B]">{p.role_title || '—'} · {(p.professional_services || []).length} servicios</div>
+                    <div className="truncate text-[11.5px] text-[#64748B]">{p.role_title || '—'} · {(p.professional_services || []).length} servicios · {p.commission_pct}% comisión</div>
                   </div>
                 </div>
                 {canSeeFinancials && (

@@ -58,6 +58,10 @@ export function rescheduleBooking(token, date, startMinute) {
   return call('reschedule-booking', { method: 'POST', body: { token, date, startMinute } });
 }
 
+export function submitReview(token, rating, comment) {
+  return call('submit-review', { method: 'POST', body: { token, rating, comment } });
+}
+
 export function inviteProfessional(payload) {
   return callAuthed('invite-professional', { method: 'POST', body: payload });
 }

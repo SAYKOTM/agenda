@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useTenantData } from '../features/tenant/useTenantData';
+import { supabase } from '../lib/supabaseClient';
 import { money, durLabel } from '../lib/format';
 import ClientShell from '../components/ClientShell';
 
@@ -7,6 +9,14 @@ export default function TenantLanding() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { loading, error, redirectSlug, tenant, categories, professionals } = useTenantData(slug);
+
+  // Aproximación simple del tracker de conversión: cuenta vistas de la landing pública, no
+  // deduplicada por sesión (ver panel_month_summary, migración 0016_analytics.sql).
+  useEffect(() => {
+    // supabase-js query builders son "thenables" perezosos: sin .then()/await la petición
+    // nunca se dispara.
+    if (tenant?.id) supabase.rpc('track_link_view', { p_tenant_id: tenant.id }).then(() => {});
+  }, [tenant?.id]);
 
   if (loading) return <LoadingShell />;
   if (redirectSlug) return <Navigate to={`/${redirectSlug}`} replace />;

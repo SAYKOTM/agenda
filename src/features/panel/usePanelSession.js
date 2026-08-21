@@ -15,7 +15,7 @@ export function usePanelSession() {
     }
     const { data, error } = await supabase
       .from('professionals')
-      .select('id, tenant_id, name, role_title, initials, avatar_url, bio, instagram, whatsapp, role, active, email, tenants(*)')
+      .select('id, tenant_id, name, role_title, initials, avatar_url, bio, instagram, whatsapp, role, active, email, rating_avg, rating_count, tenants(*)')
       .eq('auth_user_id', session.user.id)
       .maybeSingle();
     if (error) {

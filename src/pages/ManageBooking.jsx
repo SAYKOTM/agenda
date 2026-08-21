@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Temporal } from '@js-temporal/polyfill';
-import { fetchBookingByToken, cancelBooking, rescheduleBooking, ApiError } from '../lib/api';
+import { fetchBookingByToken, cancelBooking, rescheduleBooking, submitReview, ApiError } from '../lib/api';
 import { money, dateLine, capitalize } from '../lib/format';
 import { useToast } from '../components/Toast';
 import ClientShell from '../components/ClientShell';
@@ -25,6 +25,9 @@ export default function ManageBooking() {
   const [newDate, setNewDate] = useState(null);
   const [newSlot, setNewSlot] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +57,24 @@ export default function ManageBooking() {
   const isActive = b.status === 'pendiente' || b.status === 'confirmada';
   const meta = STATUS_META[b.status] || STATUS_META.pendiente;
   const serviceIds = (b.booking_items || []).map((i) => i.service_id).filter(Boolean);
+  const review = Array.isArray(b.reviews) ? b.reviews[0] : b.reviews;
+
+  async function onSubmitReview() {
+    if (!reviewRating) {
+      toast('Elige una calificación de 1 a 5 estrellas');
+      return;
+    }
+    setReviewSubmitting(true);
+    try {
+      const res = await submitReview(token, reviewRating, reviewComment);
+      setState((s) => ({ ...s, booking: { ...s.booking, reviews: res.review } }));
+      toast('Gracias por tu reseña');
+    } catch (e) {
+      toast(e.message || 'No pudimos guardar tu reseña');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  }
 
   async function onCancel() {
     if (!confirm('¿Seguro que quieres cancelar esta reserva?')) return;
@@ -111,11 +132,54 @@ export default function ManageBooking() {
           <Row label="Código" value={<span className="font-mono">{code}</span>} />
           <Row label="Cuándo" value={whenLine} />
           <Row label="Con" value={b.professionals?.name} />
+          {b.loyalty_discount_clp > 0 && (
+            <Row label={`Descuento fidelidad${b.loyalty_tier_applied ? ' · ' + b.loyalty_tier_applied : ''}`} value={`-${money(b.loyalty_discount_clp, tenant.currency)}`} />
+          )}
           <div className="flex items-baseline justify-between">
             <span className="text-[var(--t-sub)]">Total</span>
             <span className="font-mono text-lg font-medium">{money(b.total_price_clp, tenant.currency)}</span>
           </div>
         </div>
+
+        {b.status === 'completada' && (
+          <div className="flex flex-col gap-2.5 rounded-[20px] border border-[var(--t-border)] bg-[var(--t-panel)] p-3.5">
+            {review ? (
+              <>
+                <div className="text-[13px] font-bold">Tu reseña</div>
+                <div className="text-[15px]" style={{ color: 'var(--t-accent)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</div>
+                {review.comment && <p className="text-[13px] text-[var(--t-sub)]">{review.comment}</p>}
+                <p className="text-[11.5px] text-[var(--t-sub)]">Gracias por tu reseña.</p>
+              </>
+            ) : (
+              <>
+                <div className="text-[13px] font-bold">¿Cómo estuvo tu experiencia?</div>
+                <div className="flex gap-1 text-[26px]" style={{ color: 'var(--t-accent)' }}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button key={n} type="button" onClick={() => setReviewRating(n)} aria-label={`${n} estrellas`} className="leading-none">
+                      {n <= reviewRating ? '★' : '☆'}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  rows={3}
+                  placeholder="Cuéntanos qué te pareció (opcional)"
+                  className="w-full resize-y rounded-[14px] border border-[var(--t-border)] bg-[var(--t-bg)] px-3.5 py-3 text-[13.5px]"
+                />
+                <button
+                  type="button"
+                  onClick={onSubmitReview}
+                  disabled={reviewSubmitting}
+                  className="min-h-11 rounded-[14px] text-[13.5px] font-bold disabled:opacity-50"
+                  style={{ background: 'var(--t-accent)', color: 'var(--t-accent-ink)' }}
+                >
+                  {reviewSubmitting ? 'Enviando…' : 'Enviar reseña'}
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {isActive && !rescheduling && (
           <div className="flex flex-col gap-2">

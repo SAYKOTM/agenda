@@ -7,7 +7,16 @@ export default function StepProfessional({ professionals, selected, onSelect }) 
       </div>
       <div className="flex flex-col gap-2">
         {professionals.map((p) => (
-          <ProCard key={p.id} label={p.name} sub={p.role_title} initials={p.initials} on={selected === p.id} onClick={() => onSelect(p.id)} />
+          <ProCard
+            key={p.id}
+            label={p.name}
+            sub={p.role_title}
+            rating={p.rating_count > 0 ? p.rating_avg : null}
+            ratingCount={p.rating_count}
+            initials={p.initials}
+            on={selected === p.id}
+            onClick={() => onSelect(p.id)}
+          />
         ))}
         <ProCard label="Cualquiera disponible" sub="Te asignamos al primero con hora libre" initials="★" on={selected === 'any'} onClick={() => onSelect('any')} />
       </div>
@@ -15,7 +24,7 @@ export default function StepProfessional({ professionals, selected, onSelect }) 
   );
 }
 
-function ProCard({ label, sub, initials, on, onClick }) {
+function ProCard({ label, sub, initials, rating, ratingCount, on, onClick }) {
   return (
     <button
       type="button"
@@ -30,6 +39,11 @@ function ProCard({ label, sub, initials, on, onClick }) {
       <span className="min-w-0 flex-1">
         <span className="block text-[14.5px] font-semibold">{label}</span>
         {sub && <span className="mt-0.5 block text-xs text-[var(--t-sub)]">{sub}</span>}
+        {rating != null && (
+          <span className="mt-0.5 flex items-center gap-1 text-xs text-[var(--t-sub)]">
+            <span style={{ color: 'var(--t-accent)' }}>★</span> {rating} ({ratingCount})
+          </span>
+        )}
       </span>
       <span
         className={

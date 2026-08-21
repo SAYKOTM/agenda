@@ -55,6 +55,7 @@ export default function PanelServices() {
               <div key={s.id} className="flex flex-col gap-2 rounded-[14px] border border-[#E2E5EC] p-3 @[1024px]:grid @[1024px]:grid-cols-[2.4fr_1fr_.8fr_.8fr_.8fr_.8fr_84px] @[1024px]:items-center @[1024px]:gap-2.5 @[1024px]:rounded-none @[1024px]:border-0 @[1024px]:border-b @[1024px]:border-[#F1F2F5] @[1024px]:p-3.5">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: s.color }} aria-hidden="true" />
                     <span className="text-[13.5px] font-bold @[1024px]:text-[13px] @[1024px]:font-semibold">{s.name}</span>
                     <span className={'rounded-[7px] px-2 py-0.5 text-[10.5px] font-bold ' + (s.active ? 'bg-[#E7F4EC] text-[#1E6B43]' : 'bg-[#F2F4F7] text-[#64748B]')}>{s.active ? 'Activo' : 'Inactivo'}</span>
                   </div>

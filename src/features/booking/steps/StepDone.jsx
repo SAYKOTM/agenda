@@ -40,6 +40,9 @@ export default function StepDone({ booking, items, proLabel, tenant, form, curre
           <Row label="Servicios" value={items.map((s) => s.name).join(' + ')} />
           <Row label="Duración" value={durLabel(totalDurationMin)} />
           <Row label="Pago" value={paymentMethodLabel(booking.paymentMethod, gateway)} />
+          {booking.loyaltyDiscountClp > 0 && (
+            <Row label={`Descuento fidelidad${booking.loyaltyTierApplied ? ' · ' + booking.loyaltyTierApplied : ''}`} value={`-${money(booking.loyaltyDiscountClp, currency)}`} />
+          )}
           <div className="flex items-baseline justify-between">
             <span className="text-[var(--t-sub)]">Total</span>
             <span className="font-mono text-lg font-medium">{money(booking.totalPriceClp, currency)}</span>

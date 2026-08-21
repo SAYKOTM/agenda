@@ -173,6 +173,8 @@ Deno.serve(async (req) => {
             endAt: booking.end_at,
             totalPriceClp: booking.total_price_clp,
             depositAmountClp: booking.deposit_amount_clp,
+            loyaltyDiscountClp: booking.loyalty_discount_clp,
+            loyaltyTierApplied: booking.loyalty_tier_applied,
             paymentMethod: booking.payment_method,
             manageUrl: `/${tenantSlug}/reserva/${booking.public_token}`,
           },

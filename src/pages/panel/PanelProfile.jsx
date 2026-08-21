@@ -65,6 +65,16 @@ export default function PanelProfile() {
             </div>
           </div>
           {draft.bio && <p className="mt-3 text-xs text-[#64748B]">{draft.bio}</p>}
+          <div className="mt-3 flex items-center gap-2 border-t border-[#F1F2F5] pt-3 text-[13px]">
+            {professional.rating_count > 0 ? (
+              <>
+                <span className="font-bold text-[#0F172A]">★ {professional.rating_avg}</span>
+                <span className="text-[#64748B]">{professional.rating_count} reseña{professional.rating_count === 1 ? '' : 's'}</span>
+              </>
+            ) : (
+              <span className="text-[#94A3B8]">Aún no tienes reseñas</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

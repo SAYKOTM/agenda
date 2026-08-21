@@ -7,8 +7,10 @@ const inputCls = 'min-h-11 w-full rounded-[10px] border border-[#D3D7E0] bg-whit
 const emptyDraft = (tenantId, categoryId) => ({
   tenant_id: tenantId, category_id: categoryId, name: '', description: '',
   duration_min: 30, price_clp: 12000, buffer_before_min: 0, buffer_after_min: 10,
-  deposit_required: false, deposit_amount_clp: null, active: true,
+  deposit_required: false, deposit_amount_clp: null, active: true, color: COLOR_PRESETS[0],
 });
+
+const COLOR_PRESETS = ['#4F46E5', '#2C8B58', '#E0891B', '#C0402B', '#7C3AED', '#0891B2', '#DB2777', '#64748B'];
 
 export default function ServiceFormModal({ tenantId, categories, service, onClose, onSaved }) {
   const toast = useToast();
@@ -30,7 +32,7 @@ export default function ServiceFormModal({ tenantId, categories, service, onClos
       duration_min: Number(draft.duration_min) || 1, price_clp: Number(draft.price_clp) || 0,
       buffer_before_min: Number(draft.buffer_before_min) || 0, buffer_after_min: Number(draft.buffer_after_min) || 0,
       deposit_required: !!draft.deposit_required, deposit_amount_clp: draft.deposit_required ? Number(draft.deposit_amount_clp) || 0 : null,
-      active: !!draft.active,
+      active: !!draft.active, color: draft.color || COLOR_PRESETS[0],
     };
     const { error } = service
       ? await supabase.from('services').update(payload).eq('id', service.id)
@@ -70,6 +72,31 @@ export default function ServiceFormModal({ tenantId, categories, service, onClos
           <Field label="Buffer antes (min)"><input type="number" min={0} value={draft.buffer_before_min} onChange={(e) => set('buffer_before_min', e.target.value)} className={inputCls} /></Field>
           <Field label="Buffer después (min)"><input type="number" min={0} value={draft.buffer_after_min} onChange={(e) => set('buffer_after_min', e.target.value)} className={inputCls} /></Field>
         </div>
+
+        <Field label="Color en la agenda">
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={draft.color || COLOR_PRESETS[0]}
+              onChange={(e) => set('color', e.target.value)}
+              className="h-9 w-11 flex-none cursor-pointer rounded-[8px] border border-[#D3D7E0] bg-white p-1"
+              aria-label="Color personalizado"
+            />
+            <div className="flex flex-1 flex-wrap gap-1.5">
+              {COLOR_PRESETS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => set('color', c)}
+                  aria-label={`Usar color ${c}`}
+                  aria-pressed={draft.color === c}
+                  className={'h-7 w-7 flex-none rounded-full border-2 ' + (draft.color === c ? 'border-[#0F172A]' : 'border-transparent')}
+                  style={{ background: c }}
+                />
+              ))}
+            </div>
+          </div>
+        </Field>
 
         <div className="flex items-center justify-between rounded-[11px] border border-[#E2E5EC] px-3 py-2.5">
           <span className="text-[13px] font-semibold">Requiere seña</span>

@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { Temporal } from '@js-temporal/polyfill';
 import { supabase } from '../../lib/supabaseClient';
 
-// Ranking de profesionales de la semana actual (panel_team_ranking, migración 0009):
-// agregado en la base, no en el cliente.
-export function usePanelTeamRanking(timeZone) {
+// Ranking de profesionales del rango elegido (panel_team_ranking, migración 0009, con comisión
+// agregada en 0018): agregado en la base, no en el cliente. `scope`: 'day' | 'week' | 'month'.
+export function usePanelTeamRanking(timeZone, scope = 'week') {
   const [state, setState] = useState({ loading: true, error: null, ranking: [] });
 
   useEffect(() => {
@@ -13,9 +13,13 @@ export function usePanelTeamRanking(timeZone) {
 
     const today = Temporal.Now.plainDateISO(timeZone);
     const weekStart = today.subtract({ days: today.dayOfWeek - 1 });
-    const weekEnd = weekStart.add({ days: 7 });
-    const from = weekStart.toZonedDateTime({ timeZone }).toInstant().toString();
-    const to = weekEnd.toZonedDateTime({ timeZone }).toInstant().toString();
+    const monthStart = today.with({ day: 1 });
+    const [rangeStart, rangeEnd] =
+      scope === 'day' ? [today, today.add({ days: 1 })]
+      : scope === 'month' ? [monthStart, monthStart.add({ months: 1 })]
+      : [weekStart, weekStart.add({ days: 7 })];
+    const from = rangeStart.toZonedDateTime({ timeZone }).toInstant().toString();
+    const to = rangeEnd.toZonedDateTime({ timeZone }).toInstant().toString();
 
     supabase
       .rpc('panel_team_ranking', { p_from: from, p_to: to })
@@ -27,7 +31,7 @@ export function usePanelTeamRanking(timeZone) {
     return () => {
       cancelled = true;
     };
-  }, [timeZone]);
+  }, [timeZone, scope]);
 
   return state;
 }

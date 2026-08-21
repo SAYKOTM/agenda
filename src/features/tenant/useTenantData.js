@@ -50,7 +50,7 @@ export function useTenantData(slug) {
           .select('id, name, sort_order, services(id, name, description, duration_min, price_clp, buffer_before_min, buffer_after_min, deposit_required, deposit_amount_clp, active, sort_order)')
           .eq('tenant_id', tenant.id)
           .order('sort_order'),
-        supabase.from('professionals').select('id, name, role_title, initials, avatar_url').eq('tenant_id', tenant.id).eq('active', true),
+        supabase.from('professionals').select('id, name, role_title, initials, avatar_url, rating_avg, rating_count').eq('tenant_id', tenant.id).eq('active', true),
         supabase.from('professional_services').select('professional_id, service_id'),
         supabase.from('tenant_payment_methods').select('method, gateway').eq('tenant_id', tenant.id).eq('enabled', true),
         supabase.from('tenant_bank_accounts').select('holder, bank, account_type, account_number, rut, notice_email').eq('tenant_id', tenant.id).maybeSingle(),

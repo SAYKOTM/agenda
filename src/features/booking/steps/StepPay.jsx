@@ -12,6 +12,8 @@ export default function StepPay({
   pickedLine,
   items,
   totalPrice,
+  loyaltyPreview,
+  cancellationPolicy,
   currency,
   paymentMethods,
   bankAccount,
@@ -23,6 +25,9 @@ export default function StepPay({
   submitting,
 }) {
   const gateway = paymentMethods.find((m) => m.method === 'online')?.gateway;
+  const discountPct = Number(loyaltyPreview?.discountPct) || 0;
+  const discountAmount = discountPct > 0 ? Math.round((totalPrice * discountPct) / 100) : 0;
+  const finalTotal = totalPrice - discountAmount;
 
   return (
     <>
@@ -45,9 +50,15 @@ export default function StepPay({
             </div>
           ))}
           <div className="h-px bg-[var(--t-border)]" />
+          {discountAmount > 0 && (
+            <div className="flex justify-between text-[13px]" style={{ color: 'var(--t-accent)' }}>
+              <span>Descuento de fidelidad · {loyaltyPreview.tier} ({discountPct}%)</span>
+              <span className="font-mono text-[12.5px]">-{money(discountAmount, currency)}</span>
+            </div>
+          )}
           <div className="flex items-baseline justify-between">
             <span className="text-[13px] font-bold">Total</span>
-            <span className="font-mono text-[19px] font-medium">{money(totalPrice, currency)}</span>
+            <span className="font-mono text-[19px] font-medium">{money(finalTotal, currency)}</span>
           </div>
         </div>
 
@@ -107,9 +118,9 @@ export default function StepPay({
             color: selectedMethod && !submitting ? 'var(--t-accent-ink)' : 'var(--t-sub)',
           }}
         >
-          {submitting ? 'Confirmando…' : selectedMethod === 'online' ? `Pagar ${money(totalPrice, currency)}` : 'Confirmar reserva'}
+          {submitting ? 'Confirmando…' : selectedMethod === 'online' ? `Pagar ${money(finalTotal, currency)}` : 'Confirmar reserva'}
         </button>
-        <p className="mt-2 text-center text-[11px] text-[var(--t-sub)]">Cancelación gratuita hasta 4 horas antes.</p>
+        <p className="mt-2 text-center text-[11px] text-[var(--t-sub)]">{cancellationPolicy || 'Cancelación gratuita hasta 4 horas antes.'}</p>
       </div>
     </>
   );

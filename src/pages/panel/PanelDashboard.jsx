@@ -1,6 +1,7 @@
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { Temporal } from '@js-temporal/polyfill';
 import { usePanelMetrics } from '../../features/panel/usePanelMetrics';
+import LoyaltyBadge from '../../components/panel/LoyaltyBadge';
 import { money, hhmm, dateLine, capitalize } from '../../lib/format';
 
 const STATUS_LABEL = { pendiente: 'Pendiente', confirmada: 'Confirmada', completada: 'Completada', cancelada: 'Cancelada', 'no-show': 'No-show' };
@@ -83,7 +84,10 @@ export default function PanelDashboard() {
               >
                 <span className="w-11 flex-none font-mono text-[12.5px] font-medium">{hhmm(minutesOfDay(a.start_at, tenant.timezone))}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold text-[#0F172A]">{a.client_name}</span>
+                  <span className="flex items-center gap-1.5 truncate text-[13px] font-semibold text-[#0F172A]">
+                    {a.client_name}
+                    <LoyaltyBadge visitsCount={a.customers?.visits_count} />
+                  </span>
                   <span className="block truncate text-[11.5px] text-[#64748B]">{(a.booking_items || []).map((i) => i.name_snapshot).join(' + ')}</span>
                 </span>
                 <span className={'flex-none rounded-[7px] px-2 py-0.5 text-[10.5px] font-bold ' + STATUS_CLASS[a.status]}>{STATUS_LABEL[a.status]}</span>

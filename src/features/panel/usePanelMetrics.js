@@ -68,7 +68,7 @@ export function usePanelMetrics({ timeZone, tenantId, professionalId, scopeAll }
 
       let nextUpQuery = supabase
         .from('bookings')
-        .select('id, start_at, status, total_price_clp, client_name, booking_items(name_snapshot)')
+        .select('id, start_at, status, total_price_clp, client_name, booking_items(name_snapshot, services(color)), customers(visits_count)')
         .eq('tenant_id', tenantId);
       if (!scopeAll) nextUpQuery = nextUpQuery.eq('professional_id', professionalId);
       const { data: nextUp, error: nextErr } = await nextUpQuery

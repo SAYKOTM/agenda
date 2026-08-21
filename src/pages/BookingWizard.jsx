@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Temporal } from '@js-temporal/polyfill';
 import { useTenantData } from '../features/tenant/useTenantData';
+import { supabase } from '../lib/supabaseClient';
 import { createBooking, ApiError } from '../lib/api';
 import { hhmm, dateLine, capitalize } from '../lib/format';
 import { useToast } from '../components/Toast';
@@ -34,6 +35,7 @@ export default function BookingWizard() {
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [booking, setBooking] = useState(null);
+  const [loyaltyPreview, setLoyaltyPreview] = useState(null);
 
   useEffect(() => {
     if (!loading && !error && !redirectSlug && step === null) {
@@ -83,6 +85,9 @@ export default function BookingWizard() {
       return;
     }
     setStep('pay');
+    supabase
+      .rpc('lookup_customer_tier', { p_tenant_id: tenant.id, p_phone: form.phone.trim() })
+      .then(({ data }) => setLoyaltyPreview(data || null));
   }
 
   async function submitBooking() {
@@ -157,6 +162,8 @@ export default function BookingWizard() {
           pickedLine={pickedLine}
           items={selectedServices}
           totalPrice={selectedServices.reduce((a, s) => a + s.price_clp, 0)}
+          loyaltyPreview={loyaltyPreview}
+          cancellationPolicy={tenant.cancellation_policy_text}
           currency={tenant.currency}
           paymentMethods={paymentMethods}
           bankAccount={bankAccount}

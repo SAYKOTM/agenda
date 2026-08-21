@@ -44,20 +44,20 @@ insert into categories (id, tenant_id, name, sort_order) values
 -- ============ SERVICIOS ============
 -- buffer_after_min = 10 por defecto (tiempo de limpieza/orden entre citas); depósito exigido
 -- desde $40.000 CLP: asunción documentada en la entrega de fase 1, a revisar por el cliente.
-insert into services (id, tenant_id, category_id, name, description, duration_min, price_clp, buffer_before_min, buffer_after_min, deposit_required, deposit_amount_clp) values
-  ('a0000000-0000-0000-0000-000000000e01', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'Corte clásico', 'Tijera y máquina, lavado incluido', 35, 12000, 0, 10, false, null),
-  ('a0000000-0000-0000-0000-000000000e02', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'Fade a máquina', 'Degradado limpio, terminación a navaja', 30, 11000, 0, 10, false, null),
-  ('a0000000-0000-0000-0000-000000000e03', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'Corte niño', 'Hasta 12 años', 25, 9000, 0, 10, false, null),
-  ('a0000000-0000-0000-0000-000000000e04', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c2', 'Perfilado de barba', 'Diseño y aceite', 20, 7000, 0, 10, false, null),
-  ('a0000000-0000-0000-0000-000000000e05', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c2', 'Afeitado a navaja', 'Toalla caliente y bálsamo', 30, 10000, 0, 10, false, null),
-  ('a0000000-0000-0000-0000-000000000e06', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'Corte + barba', 'El más pedido del local', 60, 19000, 0, 10, false, null),
-  ('a0000000-0000-0000-0000-000000000e07', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'Ritual toalla caliente', 'Corte, barba y masaje capilar', 75, 26000, 0, 10, false, null),
-  ('b0000000-0000-0000-0000-000000000e01', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'Corte y peinado', 'Diagnóstico, corte y styling', 50, 22000, 0, 10, false, null),
-  ('b0000000-0000-0000-0000-000000000e02', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'Brushing', 'Lavado y secado con forma', 30, 12000, 0, 10, false, null),
-  ('b0000000-0000-0000-0000-000000000e03', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c2', 'Balayage', 'Iluminación a mano alzada + matiz', 180, 95000, 0, 15, true, 20000),
-  ('b0000000-0000-0000-0000-000000000e04', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c2', 'Retoque de raíz', 'Color en raíz y sellado', 90, 48000, 0, 15, true, 15000),
-  ('b0000000-0000-0000-0000-000000000e05', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c3', 'Keratina sin formol', 'Alisado y brillo, dura 3 meses', 120, 65000, 0, 15, true, 20000),
-  ('b0000000-0000-0000-0000-000000000e06', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c3', 'Hidratación profunda', 'Ampolla y vapor', 45, 19000, 0, 10, false, null);
+insert into services (id, tenant_id, category_id, name, description, duration_min, price_clp, buffer_before_min, buffer_after_min, deposit_required, deposit_amount_clp, color) values
+  ('a0000000-0000-0000-0000-000000000e01', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'Corte clásico', 'Tijera y máquina, lavado incluido', 35, 12000, 0, 10, false, null, '#4F46E5'),
+  ('a0000000-0000-0000-0000-000000000e02', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'Fade a máquina', 'Degradado limpio, terminación a navaja', 30, 11000, 0, 10, false, null, '#2C8B58'),
+  ('a0000000-0000-0000-0000-000000000e03', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'Corte niño', 'Hasta 12 años', 25, 9000, 0, 10, false, null, '#E0891B'),
+  ('a0000000-0000-0000-0000-000000000e04', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c2', 'Perfilado de barba', 'Diseño y aceite', 20, 7000, 0, 10, false, null, '#7C3AED'),
+  ('a0000000-0000-0000-0000-000000000e05', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c2', 'Afeitado a navaja', 'Toalla caliente y bálsamo', 30, 10000, 0, 10, false, null, '#DB2777'),
+  ('a0000000-0000-0000-0000-000000000e06', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'Corte + barba', 'El más pedido del local', 60, 19000, 0, 10, false, null, '#0891B2'),
+  ('a0000000-0000-0000-0000-000000000e07', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'Ritual toalla caliente', 'Corte, barba y masaje capilar', 75, 26000, 0, 10, false, null, '#C0402B'),
+  ('b0000000-0000-0000-0000-000000000e01', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'Corte y peinado', 'Diagnóstico, corte y styling', 50, 22000, 0, 10, false, null, '#4F46E5'),
+  ('b0000000-0000-0000-0000-000000000e02', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'Brushing', 'Lavado y secado con forma', 30, 12000, 0, 10, false, null, '#2C8B58'),
+  ('b0000000-0000-0000-0000-000000000e03', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c2', 'Balayage', 'Iluminación a mano alzada + matiz', 180, 95000, 0, 15, true, 20000, '#7C3AED'),
+  ('b0000000-0000-0000-0000-000000000e04', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c2', 'Retoque de raíz', 'Color en raíz y sellado', 90, 48000, 0, 15, true, 15000, '#DB2777'),
+  ('b0000000-0000-0000-0000-000000000e05', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c3', 'Keratina sin formol', 'Alisado y brillo, dura 3 meses', 120, 65000, 0, 15, true, 20000, '#0891B2'),
+  ('b0000000-0000-0000-0000-000000000e06', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c3', 'Hidratación profunda', 'Ampolla y vapor', 45, 19000, 0, 10, false, null, '#E0891B');
 
 -- ============ PROFESIONALES ============
 -- El primer profesional de cada tenant es el administrador del salón (regla tomada del
@@ -238,5 +238,61 @@ begin
         end loop;
       end loop;
     end loop;
+  end loop;
+end $$;
+
+-- ============ CLIENTES (backfill de las reservas de ejemplo de arriba) ============
+-- La migración 0014_customers_and_loyalty.sql hace este mismo backfill, pero corre ANTES que
+-- este seed (orden de `supabase db reset`): en ese momento "bookings" todavía está vacía. Se
+-- repite aquí para que el seed también deje medallas de fidelidad y fichas de cliente listas
+-- para probar (los mismos 12 nombres se repiten en la semana generada arriba, así que ya
+-- acumulan varias visitas).
+insert into customers (tenant_id, phone, name, email)
+select distinct on (tenant_id, client_phone) tenant_id, client_phone, client_name, client_email
+from bookings
+order by tenant_id, client_phone, created_at desc
+on conflict (tenant_id, phone) do nothing;
+
+update bookings b set customer_id = c.id
+from customers c
+where c.tenant_id = b.tenant_id and c.phone = b.client_phone and b.customer_id is null;
+
+update customers c set
+  visits_count = agg.visits_count,
+  total_spent_clp = agg.total_spent_clp,
+  last_visit_at = agg.last_visit_at
+from (
+  select customer_id,
+    count(*) filter (where status = 'completada') as visits_count,
+    coalesce(sum(total_price_clp) filter (where status in ('confirmada', 'completada')), 0) as total_spent_clp,
+    max(start_at) filter (where status = 'completada') as last_visit_at
+  from bookings
+  where customer_id is not null
+  group by customer_id
+) agg
+where agg.customer_id = c.id;
+
+-- Roble Barbería demuestra el toggle de descuentos por fidelidad encendido; Lumière lo deja
+-- apagado (default) para mostrar las medallas en modo solo informativo.
+update tenants set enable_loyalty_discounts = true where id = 'a0000000-0000-0000-0000-000000000000';
+
+-- ============ RESEÑAS DE EJEMPLO (sobre reservas 'completada' ya generadas) ============
+do $$
+declare
+  v_b record;
+  v_comments text[] := array['Excelente atención, quedé muy conforme.', 'Puntual y buen resultado, volveré.', 'Me encantó el detalle y la buena onda.', 'Todo perfecto, como siempre.', null];
+  v_seed int;
+begin
+  for v_b in
+    select id, tenant_id, professional_id, customer_id
+    from bookings
+    where status = 'completada' and customer_id is not null
+    order by random()
+    limit 24
+  loop
+    v_seed := abs(hashtext(v_b.id::text));
+    insert into reviews (tenant_id, professional_id, booking_id, customer_id, rating, comment)
+    values (v_b.tenant_id, v_b.professional_id, v_b.id, v_b.customer_id, 3 + v_seed % 3, v_comments[1 + v_seed % array_length(v_comments, 1)])
+    on conflict (booking_id) do nothing;
   end loop;
 end $$;

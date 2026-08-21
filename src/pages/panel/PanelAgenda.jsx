@@ -4,7 +4,8 @@ import { Temporal } from '@js-temporal/polyfill';
 import { usePanelAppointments } from '../../features/panel/usePanelAppointments';
 import { usePanelTeam } from '../../features/panel/usePanelTeam';
 import AppointmentDrawer from '../../components/panel/AppointmentDrawer';
-import { money, hhmm, capitalize, dateLine } from '../../lib/format';
+import LoyaltyBadge from '../../components/panel/LoyaltyBadge';
+import { money, hhmm, hhmmRange12, capitalize, dateLine } from '../../lib/format';
 
 const G0 = 540; // 09:00
 const G1 = 1260; // 21:00
@@ -36,6 +37,13 @@ export default function PanelAgenda() {
   const [scopeAll, setScopeAll] = useState(false);
   const [openId, setOpenId] = useState(searchParams.get('booking'));
 
+  // Ver la agenda (y por lo tanto los ingresos) de todo el equipo es admin-only, igual que el
+  // resto de las vistas consolidadas del panel (Resumen, ranking de Equipo). El backend ya lo
+  // exige por RLS (0017_professional_financial_isolation.sql) -- esto es además la UI correcta,
+  // no una segunda barrera de seguridad.
+  const canSeeTeam = professional.role === 'admin';
+  const effectiveScopeAll = canSeeTeam && scopeAll;
+
   const weekStart = weekStartOf(gDate);
   const monthStart = gDate.with({ day: 1 });
   const range = scope === 'month'
@@ -45,7 +53,7 @@ export default function PanelAgenda() {
       : [gDate, gDate.add({ days: 1 })];
 
   const { loading, error, bookings, reload } = usePanelAppointments({
-    tenantId: tenant.id, timeZone: tenant.timezone, professionalId: professional.id, scopeAll,
+    tenantId: tenant.id, timeZone: tenant.timezone, professionalId: professional.id, scopeAll: effectiveScopeAll,
     from: range[0].toString(), to: range[1].toString(),
   });
 
@@ -57,13 +65,13 @@ export default function PanelAgenda() {
     setSearchParams(searchParams, { replace: true });
   }
 
-  const teamShown = scopeAll ? team : team.filter((p) => p.id === professional.id);
+  const teamShown = effectiveScopeAll ? team : team.filter((p) => p.id === professional.id);
 
   return (
     <div className="flex flex-col gap-3.5">
       <div className="flex flex-wrap items-center gap-2.5">
         <h1 className="mr-auto text-[21px] font-extrabold tracking-tight text-[#0F172A]">Agenda</h1>
-        {team.length > 1 && (
+        {canSeeTeam && team.length > 1 && (
           <button
             type="button"
             onClick={() => setScopeAll((v) => !v)}
@@ -171,17 +179,33 @@ function AgendaGrid({ tenant, columns, onOpen }) {
                     const dur = Math.max(1, Math.round((new Date(ev.end_at) - new Date(ev.start_at)) / 60000));
                     const h = Math.max((dur / 60) * HH - 3, 26);
                     const meta = STATUS_META[ev.status];
+                    const serviceColor = ev.booking_items?.[0]?.services?.color || meta.bar;
+                    const serviceNames = (ev.booking_items || []).map((i) => i.name_snapshot).join(' + ');
                     const tight = h < 52;
                     return (
                       <div key={ev.id} className="absolute left-0.5 right-0.5" style={{ top: ((start - G0) / 60) * HH, height: h }}>
                         <button
                           type="button"
                           onClick={() => onOpen(ev.id)}
-                          className={'h-full w-full overflow-hidden rounded-[9px] border-l-[3px] text-left ' + (tight ? 'flex items-center gap-1.5 px-1.5' : 'px-1.5 py-1')}
-                          style={{ background: meta.bg, borderColor: meta.bar, color: meta.ink }}
+                          className={'h-full w-full overflow-hidden rounded-[9px] border-l-[3px] text-left text-[#0F172A] ' + (tight ? 'flex items-center gap-1.5 px-1.5' : 'px-1.5 py-1')}
+                          style={{ background: `color-mix(in srgb, ${serviceColor} 16%, white)`, borderColor: meta.bar }}
                         >
-                          <span className={'font-mono text-[10px] opacity-80 ' + (tight ? 'flex-none' : 'block')}>{hhmm(start)}</span>
-                          <span className={'font-bold ' + (tight ? 'min-w-0 flex-1 truncate text-[11.5px]' : 'block truncate text-[11.5px]')}>{ev.client_name}</span>
+                          <span className={'font-mono text-[10px] opacity-70 ' + (tight ? 'flex-none' : 'block')}>{hhmm(start)}</span>
+                          {tight ? (
+                            <span className="flex min-w-0 flex-1 items-center gap-1 truncate text-[11.5px]">
+                              <span className="font-bold">{ev.client_name}</span>
+                              <LoyaltyBadge visitsCount={ev.customers?.visits_count} />
+                              {serviceNames && <span className="min-w-0 truncate font-normal opacity-70">· {serviceNames}</span>}
+                            </span>
+                          ) : (
+                            <>
+                              <span className="flex min-w-0 items-center gap-1 truncate text-[11.5px] font-bold">
+                                <span className="truncate">{ev.client_name}</span>
+                                <LoyaltyBadge visitsCount={ev.customers?.visits_count} />
+                              </span>
+                              {serviceNames && <span className="block truncate text-[10.5px] font-normal opacity-70">{serviceNames}</span>}
+                            </>
+                          )}
                         </button>
                       </div>
                     );
@@ -193,8 +217,9 @@ function AgendaGrid({ tenant, columns, onOpen }) {
         </div>
         <div className="flex flex-wrap gap-3.5 border-t border-[#E2E5EC] px-3 py-2.5 text-[11px] text-[#64748B]">
           {Object.values(STATUS_META).map((m) => (
-            <span key={m.label} className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-[3px]" style={{ background: m.bg, borderLeft: `3px solid ${m.bar}` }} />{m.label}</span>
+            <span key={m.label} className="flex items-center gap-1.5"><span className="h-3 w-1 rounded-full" style={{ background: m.bar }} />{m.label}</span>
           ))}
+          <span className="ml-auto text-[10.5px] text-[#94A3B8]">El color de fondo de cada bloque indica el servicio</span>
         </div>
       </div>
     </div>
@@ -204,14 +229,25 @@ function AgendaGrid({ tenant, columns, onOpen }) {
 function AppointmentCard({ booking, tenant, onClick }) {
   const meta = STATUS_META[booking.status];
   const start = minutesOf(booking.start_at, tenant.timezone);
+  const end = minutesOf(booking.end_at, tenant.timezone);
+  const serviceColor = booking.booking_items?.[0]?.services?.color || '#94A3B8';
+  const serviceNames = (booking.booking_items || []).map((i) => i.name_snapshot).join(' + ');
   return (
-    <button type="button" onClick={onClick} className="flex items-center gap-3 rounded-[13px] border border-[#E2E5EC] bg-white px-3 py-2.5 text-left">
-      <span className="w-11 flex-none font-mono text-[12.5px] font-semibold">{hhmm(start)}</span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-semibold text-[#0F172A]">{booking.client_name}</span>
-        <span className="block truncate text-[11.5px] text-[#64748B]">{(booking.booking_items || []).map((i) => i.name_snapshot).join(' + ')}</span>
-      </span>
-      <span className="flex-none rounded-[7px] px-2 py-0.5 text-[10.5px] font-bold" style={{ background: meta.bg, color: meta.ink }}>{meta.label}</span>
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col gap-1.5 rounded-[13px] border-y border-r border-l-[3px] border-[#E2E5EC] px-3 py-2.5 text-left"
+      style={{ background: `color-mix(in srgb, ${serviceColor} 8%, white)`, borderLeftColor: serviceColor }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <span className="truncate text-[13.5px] font-bold text-[#0F172A]">{booking.client_name}</span>
+          <LoyaltyBadge visitsCount={booking.customers?.visits_count} />
+          {serviceNames && <span className="truncate text-[12px] font-medium text-[#64748B]">· {serviceNames}</span>}
+        </span>
+        <span className="flex-none rounded-[7px] px-2 py-0.5 text-[10.5px] font-bold" style={{ background: meta.bg, color: meta.ink }}>{meta.label}</span>
+      </div>
+      <span className="font-mono text-[11.5px] text-[#64748B]">{hhmmRange12(start, end)}</span>
     </button>
   );
 }

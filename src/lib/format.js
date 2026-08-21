@@ -16,6 +16,19 @@ export function hhmm(minutesFromMidnight) {
   return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
 }
 
+function hhmm12(minutesFromMidnight) {
+  const h24 = Math.floor(minutesFromMidnight / 60);
+  const m = minutesFromMidnight % 60;
+  const period = h24 < 12 ? 'AM' : 'PM';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return String(h12).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ' ' + period;
+}
+
+// "10:00 AM - 11:00 AM", usado en el bloque de cita de la Agenda.
+export function hhmmRange12(startMin, endMin) {
+  return `${hhmm12(startMin)} - ${hhmm12(endMin)}`;
+}
+
 const WEEKDAYS_LONG = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 const MONTHS_LONG = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',

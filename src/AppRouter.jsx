@@ -10,6 +10,7 @@ import PanelLayout from './pages/panel/PanelLayout';
 import PanelDashboard from './pages/panel/PanelDashboard';
 import PanelAgenda from './pages/panel/PanelAgenda';
 import PanelServices from './pages/panel/PanelServices';
+import PanelClients from './pages/panel/PanelClients';
 import PanelAvailability from './pages/panel/PanelAvailability';
 import PanelProfile from './pages/panel/PanelProfile';
 import PanelOverview from './pages/panel/PanelOverview';
@@ -30,6 +31,7 @@ export default function AppRouter() {
             <Route index element={<PanelDashboard />} />
             <Route path="agenda" element={<PanelAgenda />} />
             <Route path="servicios" element={<PanelServices />} />
+            <Route path="clientes" element={<PanelClients />} />
             <Route path="disponibilidad" element={<PanelAvailability />} />
             <Route path="perfil" element={<PanelProfile />} />
             <Route element={<RequireAdmin />}>

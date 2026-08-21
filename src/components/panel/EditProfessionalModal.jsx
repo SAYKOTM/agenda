@@ -8,6 +8,7 @@ export default function EditProfessionalModal({ professional, allServices, isSel
   const toast = useToast();
   const [roleTitle, setRoleTitle] = useState(professional.role_title || '');
   const [role, setRole] = useState(professional.role);
+  const [commissionPct, setCommissionPct] = useState(professional.commission_pct ?? 0);
   const [serviceIds, setServiceIds] = useState(new Set((professional.professional_services || []).map((r) => r.service_id)));
   const [saving, setSaving] = useState(false);
 
@@ -22,7 +23,10 @@ export default function EditProfessionalModal({ professional, allServices, isSel
 
   async function save() {
     setSaving(true);
-    const { error: profErr } = await supabase.from('professionals').update({ role_title: roleTitle, role }).eq('id', professional.id);
+    const { error: profErr } = await supabase
+      .from('professionals')
+      .update({ role_title: roleTitle, role, commission_pct: Number(commissionPct) || 0 })
+      .eq('id', professional.id);
     if (profErr) {
       setSaving(false);
       toast('No pudimos guardar los permisos');
@@ -61,6 +65,11 @@ export default function EditProfessionalModal({ professional, allServices, isSel
             <option value="admin">Administrador</option>
           </select>
           {isSelf && <span className="text-[11px] text-[#64748B]">No puedes cambiar tus propios permisos.</span>}
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11.5px] font-bold text-[#475569]">Comisión (%)</span>
+          <input type="number" min={0} max={100} step={0.5} value={commissionPct} onChange={(e) => setCommissionPct(e.target.value)} className={inputCls} />
+          <span className="text-[11px] text-[#64748B]">% de sus ingresos que se le paga como comisión. Se usa en el Resumen financiero.</span>
         </label>
 
         <div className="flex flex-col gap-1.5">
