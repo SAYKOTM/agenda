@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Temporal } from '@js-temporal/polyfill';
-import { fetchAvailableSlots } from '../lib/api';
+import { fetchAvailableSlots, fetchScheduleDays } from '../lib/api';
 import { hhmm, dateLine, monthLabel, capitalize } from '../lib/format';
+import { isWorkingDay } from '../lib/schedule';
 
 const WEEKDAYS_SHORT = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
@@ -13,9 +14,48 @@ export default function SlotPicker({ tenantSlug, professionalId, serviceIds, tim
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [nonWorkingDates, setNonWorkingDates] = useState(() => new Set());
 
   const plainDate = Temporal.PlainDate.from(date);
   const today = Temporal.Now.plainDateISO(timeZone);
+
+  // Días sin ningún profesional capaz trabajando: se deshabilitan en el calendario para que el
+  // cliente no los vea como espacios libres/seleccionables (más allá de que, al elegirlos, la
+  // grilla de horas ya mostraría "sin cupos").
+  useEffect(() => {
+    let cancelled = false;
+    const monthStr = `${viewMonth.year}-${String(viewMonth.month).padStart(2, '0')}`;
+    fetchScheduleDays({ tenantSlug, professionalId, serviceIds, month: monthStr })
+      .then((res) => {
+        if (cancelled) return;
+        const byPro = new Map();
+        for (const b of res.blocks || []) {
+          if (!byPro.has(b.professional_id)) byPro.set(b.professional_id, { blocks: [], exceptions: [] });
+          byPro.get(b.professional_id).blocks.push(b);
+        }
+        for (const e of res.exceptions || []) {
+          if (!byPro.has(e.professional_id)) byPro.set(e.professional_id, { blocks: [], exceptions: [] });
+          byPro.get(e.professional_id).exceptions.push(e);
+        }
+        const proIds = res.professionalIds?.length ? res.professionalIds : Array.from(byPro.keys());
+        const nonWorking = new Set();
+        for (let d = 1; d <= viewMonth.daysInMonth; d++) {
+          const cellDate = viewMonth.toPlainDate({ day: d });
+          const anyWorking = proIds.some((pid) => {
+            const data = byPro.get(pid) || { blocks: [], exceptions: [] };
+            return isWorkingDay(data.blocks, data.exceptions, cellDate);
+          });
+          if (!anyWorking) nonWorking.add(cellDate.toString());
+        }
+        setNonWorkingDates(nonWorking);
+      })
+      .catch(() => {
+        if (!cancelled) setNonWorkingDates(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantSlug, viewMonth.toString(), professionalId, serviceIds.join(',')]);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,16 +142,20 @@ export default function SlotPicker({ tenantSlug, professionalId, serviceIds, tim
             if (!d) return <div key={i} className="h-11" />;
             const iso = d.toString();
             const isPast = Temporal.PlainDate.compare(d, today) < 0;
+            const isClosed = !isPast && nonWorkingDates.has(iso);
             const isSelected = iso === date;
             return (
               <button
                 key={iso}
                 type="button"
-                disabled={isPast}
+                disabled={isPast || isClosed}
                 onClick={() => onPick(iso, null)}
                 aria-pressed={isSelected}
+                title={isClosed ? 'Día no laboral' : undefined}
                 className={
-                  'h-11 rounded-[14px] text-[13.5px] font-medium disabled:opacity-30 disabled:cursor-default ' +
+                  'h-11 rounded-[14px] text-[13.5px] font-medium disabled:cursor-default ' +
+                  (isPast ? 'disabled:opacity-30 ' : '') +
+                  (isClosed ? 'text-[var(--t-sub)] opacity-40 line-through decoration-[var(--t-border)] ' : '') +
                   (isSelected
                     ? 'border border-[var(--t-accent)] bg-[var(--t-accent)] font-bold text-[var(--t-accent-ink)]'
                     : 'border border-transparent text-[var(--t-ink)] hover:border-[var(--t-border)]')

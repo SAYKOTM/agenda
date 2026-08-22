@@ -41,24 +41,6 @@ insert into categories (id, tenant_id, name, sort_order) values
   ('b0000000-0000-0000-0000-0000000000c2', 'b0000000-0000-0000-0000-000000000000', 'Color', 2),
   ('b0000000-0000-0000-0000-0000000000c3', 'b0000000-0000-0000-0000-000000000000', 'Tratamientos', 3);
 
--- ============ SERVICIOS ============
--- buffer_after_min = 10 por defecto (tiempo de limpieza/orden entre citas); depósito exigido
--- desde $40.000 CLP: asunción documentada en la entrega de fase 1, a revisar por el cliente.
-insert into services (id, tenant_id, category_id, name, description, duration_min, price_clp, buffer_before_min, buffer_after_min, deposit_required, deposit_amount_clp, color) values
-  ('a0000000-0000-0000-0000-000000000e01', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'Corte clásico', 'Tijera y máquina, lavado incluido', 35, 12000, 0, 10, false, null, '#4F46E5'),
-  ('a0000000-0000-0000-0000-000000000e02', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'Fade a máquina', 'Degradado limpio, terminación a navaja', 30, 11000, 0, 10, false, null, '#2C8B58'),
-  ('a0000000-0000-0000-0000-000000000e03', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'Corte niño', 'Hasta 12 años', 25, 9000, 0, 10, false, null, '#E0891B'),
-  ('a0000000-0000-0000-0000-000000000e04', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c2', 'Perfilado de barba', 'Diseño y aceite', 20, 7000, 0, 10, false, null, '#7C3AED'),
-  ('a0000000-0000-0000-0000-000000000e05', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c2', 'Afeitado a navaja', 'Toalla caliente y bálsamo', 30, 10000, 0, 10, false, null, '#DB2777'),
-  ('a0000000-0000-0000-0000-000000000e06', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'Corte + barba', 'El más pedido del local', 60, 19000, 0, 10, false, null, '#0891B2'),
-  ('a0000000-0000-0000-0000-000000000e07', 'a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'Ritual toalla caliente', 'Corte, barba y masaje capilar', 75, 26000, 0, 10, false, null, '#C0402B'),
-  ('b0000000-0000-0000-0000-000000000e01', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'Corte y peinado', 'Diagnóstico, corte y styling', 50, 22000, 0, 10, false, null, '#4F46E5'),
-  ('b0000000-0000-0000-0000-000000000e02', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'Brushing', 'Lavado y secado con forma', 30, 12000, 0, 10, false, null, '#2C8B58'),
-  ('b0000000-0000-0000-0000-000000000e03', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c2', 'Balayage', 'Iluminación a mano alzada + matiz', 180, 95000, 0, 15, true, 20000, '#7C3AED'),
-  ('b0000000-0000-0000-0000-000000000e04', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c2', 'Retoque de raíz', 'Color en raíz y sellado', 90, 48000, 0, 15, true, 15000, '#DB2777'),
-  ('b0000000-0000-0000-0000-000000000e05', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c3', 'Keratina sin formol', 'Alisado y brillo, dura 3 meses', 120, 65000, 0, 15, true, 20000, '#0891B2'),
-  ('b0000000-0000-0000-0000-000000000e06', 'b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c3', 'Hidratación profunda', 'Ampolla y vapor', 45, 19000, 0, 10, false, null, '#E0891B');
-
 -- ============ PROFESIONALES ============
 -- El primer profesional de cada tenant es el administrador del salón (regla tomada del
 -- prototipo: team()[0].perms === 'Administrador').
@@ -100,29 +82,48 @@ begin
   end loop;
 end $$;
 
--- ============ SERVICIOS POR PROFESIONAL ============
--- El administrador realiza todos los servicios del salón; el resto según su especialidad
--- (asunción de seed, editable luego desde el panel).
-insert into professional_services (professional_id, service_id)
-select 'a0000000-0000-0000-0000-000000000f01', id from services where tenant_id = 'a0000000-0000-0000-0000-000000000000';
-insert into professional_services (professional_id, service_id)
-select 'a0000000-0000-0000-0000-000000000f02', id from services where tenant_id = 'a0000000-0000-0000-0000-000000000000'
-  and category_id in ('a0000000-0000-0000-0000-0000000000c1', 'a0000000-0000-0000-0000-0000000000c3');
-insert into professional_services (professional_id, service_id)
-select 'a0000000-0000-0000-0000-000000000f03', id from services where tenant_id = 'a0000000-0000-0000-0000-000000000000'
-  and category_id in ('a0000000-0000-0000-0000-0000000000c2', 'a0000000-0000-0000-0000-0000000000c3');
-
-insert into professional_services (professional_id, service_id)
-select 'b0000000-0000-0000-0000-000000000f01', id from services where tenant_id = 'b0000000-0000-0000-0000-000000000000';
-insert into professional_services (professional_id, service_id)
-select 'b0000000-0000-0000-0000-000000000f02', id from services where tenant_id = 'b0000000-0000-0000-0000-000000000000'
-  and category_id = 'b0000000-0000-0000-0000-0000000000c1';
-insert into professional_services (professional_id, service_id)
-select 'b0000000-0000-0000-0000-000000000f03', id from services where tenant_id = 'b0000000-0000-0000-0000-000000000000'
-  and category_id = 'b0000000-0000-0000-0000-0000000000c3';
-insert into professional_services (professional_id, service_id)
-select 'b0000000-0000-0000-0000-000000000f04', id from services where tenant_id = 'b0000000-0000-0000-0000-000000000000'
-  and category_id = 'b0000000-0000-0000-0000-0000000000c1';
+-- ============ SERVICIOS (cada uno pertenece a UN profesional, ver 0020) ============
+-- buffer_after_min = 10 por defecto (tiempo de limpieza/orden entre citas); depósito exigido
+-- desde $40.000 CLP: asunción documentada en la entrega de fase 1, a revisar por el cliente. El
+-- administrador de cada salón ofrece todo el repertorio; el resto según su especialidad -- son
+-- filas propias e independientes (no el mismo servicio compartido), cada quien puede editar
+-- nombre/duración/precio/color del suyo por su cuenta desde "Mis servicios".
+insert into services (tenant_id, category_id, professional_id, name, description, duration_min, price_clp, buffer_before_min, buffer_after_min, deposit_required, deposit_amount_clp, color) values
+  -- Matías (admin) -- todo el repertorio de Roble
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'a0000000-0000-0000-0000-000000000f01', 'Corte clásico', 'Tijera y máquina, lavado incluido', 35, 12000, 0, 10, false, null, '#4F46E5'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'a0000000-0000-0000-0000-000000000f01', 'Fade a máquina', 'Degradado limpio, terminación a navaja', 30, 11000, 0, 10, false, null, '#2C8B58'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'a0000000-0000-0000-0000-000000000f01', 'Corte niño', 'Hasta 12 años', 25, 9000, 0, 10, false, null, '#E0891B'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c2', 'a0000000-0000-0000-0000-000000000f01', 'Perfilado de barba', 'Diseño y aceite', 20, 7000, 0, 10, false, null, '#7C3AED'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c2', 'a0000000-0000-0000-0000-000000000f01', 'Afeitado a navaja', 'Toalla caliente y bálsamo', 30, 10000, 0, 10, false, null, '#DB2777'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'a0000000-0000-0000-0000-000000000f01', 'Corte + barba', 'El más pedido del local', 60, 19000, 0, 10, false, null, '#0891B2'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'a0000000-0000-0000-0000-000000000f01', 'Ritual toalla caliente', 'Corte, barba y masaje capilar', 75, 26000, 0, 10, false, null, '#C0402B'),
+  -- Nicolás -- cortes y combos
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'a0000000-0000-0000-0000-000000000f02', 'Corte clásico', 'Tijera y máquina, lavado incluido', 35, 12000, 0, 10, false, null, '#4F46E5'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'a0000000-0000-0000-0000-000000000f02', 'Fade a máquina', 'Degradado limpio, terminación a navaja', 30, 11000, 0, 10, false, null, '#2C8B58'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c1', 'a0000000-0000-0000-0000-000000000f02', 'Corte niño', 'Hasta 12 años', 25, 9000, 0, 10, false, null, '#E0891B'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'a0000000-0000-0000-0000-000000000f02', 'Corte + barba', 'El más pedido del local', 60, 19000, 0, 10, false, null, '#0891B2'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'a0000000-0000-0000-0000-000000000f02', 'Ritual toalla caliente', 'Corte, barba y masaje capilar', 75, 26000, 0, 10, false, null, '#C0402B'),
+  -- Camilo -- barba y combos
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c2', 'a0000000-0000-0000-0000-000000000f03', 'Perfilado de barba', 'Diseño y aceite', 20, 7000, 0, 10, false, null, '#7C3AED'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c2', 'a0000000-0000-0000-0000-000000000f03', 'Afeitado a navaja', 'Toalla caliente y bálsamo', 30, 10000, 0, 10, false, null, '#DB2777'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'a0000000-0000-0000-0000-000000000f03', 'Corte + barba', 'El más pedido del local', 60, 19000, 0, 10, false, null, '#0891B2'),
+  ('a0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-0000000000c3', 'a0000000-0000-0000-0000-000000000f03', 'Ritual toalla caliente', 'Corte, barba y masaje capilar', 75, 26000, 0, 10, false, null, '#C0402B'),
+  -- Valentina (admin) -- todo el repertorio de Lumière
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'b0000000-0000-0000-0000-000000000f01', 'Corte y peinado', 'Diagnóstico, corte y styling', 50, 22000, 0, 10, false, null, '#4F46E5'),
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'b0000000-0000-0000-0000-000000000f01', 'Brushing', 'Lavado y secado con forma', 30, 12000, 0, 10, false, null, '#2C8B58'),
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c2', 'b0000000-0000-0000-0000-000000000f01', 'Balayage', 'Iluminación a mano alzada + matiz', 180, 95000, 0, 15, true, 20000, '#7C3AED'),
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c2', 'b0000000-0000-0000-0000-000000000f01', 'Retoque de raíz', 'Color en raíz y sellado', 90, 48000, 0, 15, true, 15000, '#DB2777'),
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c3', 'b0000000-0000-0000-0000-000000000f01', 'Keratina sin formol', 'Alisado y brillo, dura 3 meses', 120, 65000, 0, 15, true, 20000, '#0891B2'),
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c3', 'b0000000-0000-0000-0000-000000000f01', 'Hidratación profunda', 'Ampolla y vapor', 45, 19000, 0, 10, false, null, '#E0891B'),
+  -- Antonia -- corte y peinado
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'b0000000-0000-0000-0000-000000000f02', 'Corte y peinado', 'Diagnóstico, corte y styling', 50, 22000, 0, 10, false, null, '#4F46E5'),
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'b0000000-0000-0000-0000-000000000f02', 'Brushing', 'Lavado y secado con forma', 30, 12000, 0, 10, false, null, '#2C8B58'),
+  -- Rocío -- tratamientos
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c3', 'b0000000-0000-0000-0000-000000000f03', 'Keratina sin formol', 'Alisado y brillo, dura 3 meses', 120, 65000, 0, 15, true, 20000, '#0891B2'),
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c3', 'b0000000-0000-0000-0000-000000000f03', 'Hidratación profunda', 'Ampolla y vapor', 45, 19000, 0, 10, false, null, '#E0891B'),
+  -- Ignacio -- corte y peinado
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'b0000000-0000-0000-0000-000000000f04', 'Corte y peinado', 'Diagnóstico, corte y styling', 50, 22000, 0, 10, false, null, '#4F46E5'),
+  ('b0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-0000000000c1', 'b0000000-0000-0000-0000-000000000f04', 'Brushing', 'Lavado y secado con forma', 30, 12000, 0, 10, false, null, '#2C8B58');
 
 -- ============ DISPONIBILIDAD SEMANAL ============
 -- weekday: 0=lunes .. 6=domingo. Roble: lun-vie 10:00-20:00, sáb 10:00-16:00, dom cerrado.
@@ -184,7 +185,7 @@ declare
   v_booking_id uuid;
 begin
   for v_pro in select id, tenant_id from professionals loop
-    select array_agg(service_id) into v_svc_ids from professional_services where professional_id = v_pro.id;
+    select array_agg(id) into v_svc_ids from services where professional_id = v_pro.id;
     v_svc_count := coalesce(array_length(v_svc_ids, 1), 0);
     continue when v_svc_count = 0;
     select timezone into v_tz from tenants where id = v_pro.tenant_id;

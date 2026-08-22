@@ -42,6 +42,15 @@ export function fetchAvailableSlots({ tenantSlug, serviceIds, date, professional
   });
 }
 
+// Horario semanal + excepciones del mes, de los profesionales capaces de los servicios pedidos.
+// Usado por SlotPicker para deshabilitar visualmente los días no laborales del calendario, sin
+// pedir cupo por cupo (ver supabase/functions/schedule-days).
+export function fetchScheduleDays({ tenantSlug, professionalId, serviceIds, month }) {
+  return call('schedule-days', {
+    params: { tenantSlug, professionalId, serviceIds: serviceIds.join(','), month },
+  });
+}
+
 export function createBooking(payload) {
   return call('create-booking', { method: 'POST', body: payload });
 }

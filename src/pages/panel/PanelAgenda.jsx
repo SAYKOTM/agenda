@@ -3,9 +3,11 @@ import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { Temporal } from '@js-temporal/polyfill';
 import { usePanelAppointments } from '../../features/panel/usePanelAppointments';
 import { usePanelTeam } from '../../features/panel/usePanelTeam';
+import { usePanelTeamAvailability } from '../../features/panel/usePanelAvailability';
 import AppointmentDrawer from '../../components/panel/AppointmentDrawer';
 import LoyaltyBadge from '../../components/panel/LoyaltyBadge';
 import { money, hhmm, hhmmRange12, capitalize, dateLine } from '../../lib/format';
+import { isWorkingDay, closedRangesWithin } from '../../lib/schedule';
 
 const G0 = 540; // 09:00
 const G1 = 1260; // 21:00
@@ -66,6 +68,9 @@ export default function PanelAgenda() {
   }
 
   const teamShown = effectiveScopeAll ? team : team.filter((p) => p.id === professional.id);
+  const { blocksByPro, exceptionsByPro } = usePanelTeamAvailability(teamShown.map((p) => p.id));
+  const ownBlocks = blocksByPro.get(professional.id) || [];
+  const ownExceptions = exceptionsByPro.get(professional.id) || [];
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -115,16 +120,40 @@ export default function PanelAgenda() {
             scope === 'week'
               ? Array.from({ length: 7 }).map((_, i) => {
                   const d = weekStart.add({ days: i });
-                  return { head: `${WEEKDAYS_SHORT[i]} ${d.day}`, sub: d.toString() === Temporal.Now.plainDateISO(tenant.timezone).toString() ? 'hoy' : '', events: bookings.filter((b) => Temporal.Instant.from(b.start_at).toZonedDateTimeISO(tenant.timezone).toPlainDate().toString() === d.toString()) };
+                  return {
+                    head: `${WEEKDAYS_SHORT[i]} ${d.day}`,
+                    sub: d.toString() === Temporal.Now.plainDateISO(tenant.timezone).toString() ? 'hoy' : '',
+                    events: bookings.filter((b) => Temporal.Instant.from(b.start_at).toZonedDateTimeISO(tenant.timezone).toPlainDate().toString() === d.toString()),
+                    isWorking: isWorkingDay(ownBlocks, ownExceptions, d),
+                    closedRanges: closedRangesWithin(ownBlocks, ownExceptions, d, G0, G1),
+                  };
                 })
-              : teamShown.map((p) => ({ head: p.name, sub: p.role_title, events: bookings.filter((b) => b.professional_id === p.id) }))
+              : teamShown.map((p) => {
+                  const blocks = blocksByPro.get(p.id) || [];
+                  const exceptions = exceptionsByPro.get(p.id) || [];
+                  return {
+                    head: p.name,
+                    sub: p.role_title,
+                    events: bookings.filter((b) => b.professional_id === p.id),
+                    isWorking: isWorkingDay(blocks, exceptions, gDate),
+                    closedRanges: closedRangesWithin(blocks, exceptions, gDate, G0, G1),
+                  };
+                })
           }
           onOpen={(id) => { setOpenId(id); searchParams.set('booking', id); setSearchParams(searchParams, { replace: true }); }}
         />
       )}
 
       {!loading && !error && scope === 'month' && (
-        <MonthGrid tenant={tenant} monthStart={monthStart} bookings={bookings} onPickDay={(d) => { setGDate(d); setScope('day'); }} />
+        <MonthGrid
+          tenant={tenant}
+          monthStart={monthStart}
+          bookings={bookings}
+          onPickDay={(d) => { setGDate(d); setScope('day'); }}
+          blocks={ownBlocks}
+          exceptions={ownExceptions}
+          showClosed={!effectiveScopeAll}
+        />
       )}
 
       {openBooking && <AppointmentDrawer booking={openBooking} tenant={tenant} onClose={closeDrawer} onChanged={reload} />}
@@ -149,7 +178,12 @@ function AgendaGrid({ tenant, columns, onOpen }) {
         {columns.map((col, ci) => (
           col.events.length > 0 && (
             <div key={ci} className="flex flex-col gap-1.5">
-              {columns.length > 1 && <div className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">{col.head}</div>}
+              {columns.length > 1 && (
+                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">
+                  {col.head}
+                  {col.isWorking === false && <span className="rounded-[5px] bg-[#F1F2F5] px-1 py-0.5 text-[9px] font-bold normal-case text-[#94A3B8]">Cerrado</span>}
+                </div>
+              )}
               {[...col.events].sort((a, b) => a.start_at.localeCompare(b.start_at)).map((ev) => (
                 <AppointmentCard key={ev.id} booking={ev} tenant={tenant} onClick={() => onOpen(ev.id)} />
               ))}
@@ -170,10 +204,24 @@ function AgendaGrid({ tenant, columns, onOpen }) {
             {columns.map((col, ci) => (
               <div key={ci} className="min-w-[130px] flex-1 border-l border-[#EDEFF3]">
                 <div className="sticky top-0 z-[1] h-11 border-b border-[#E2E5EC] bg-white px-2 py-1.5">
-                  <div className="truncate text-xs font-bold text-[#0F172A]">{col.head}</div>
+                  <div className="flex items-center gap-1">
+                    <div className={'truncate text-xs font-bold ' + (col.isWorking === false ? 'text-[#B6BAC6]' : 'text-[#0F172A]')}>{col.head}</div>
+                    {col.isWorking === false && <span className="flex-none rounded-[5px] bg-[#F1F2F5] px-1 py-0.5 text-[9px] font-bold uppercase text-[#94A3B8]">Cerrado</span>}
+                  </div>
                   <div className="truncate text-[10.5px] text-[#94A3B8]">{col.sub}</div>
                 </div>
                 <div className="relative" style={{ height: ((G1 - G0) / 60) * HH, backgroundImage: `repeating-linear-gradient(#EDEFF3 0 1px, transparent 1px ${HH}px)` }}>
+                  {col.closedRanges?.map((r, ri) => (
+                    <div
+                      key={`closed-${ri}`}
+                      className="pointer-events-none absolute inset-x-0"
+                      style={{
+                        top: ((r.start - G0) / 60) * HH,
+                        height: ((r.end - r.start) / 60) * HH,
+                        background: 'repeating-linear-gradient(135deg, #F4F5F7, #F4F5F7 7px, #EAECF0 7px, #EAECF0 14px)',
+                      }}
+                    />
+                  ))}
                   {col.events.map((ev) => {
                     const start = minutesOf(ev.start_at, tenant.timezone);
                     const dur = Math.max(1, Math.round((new Date(ev.end_at) - new Date(ev.start_at)) / 60000));
@@ -261,7 +309,7 @@ function EmptyAgenda() {
   );
 }
 
-function MonthGrid({ tenant, monthStart, bookings, onPickDay }) {
+function MonthGrid({ tenant, monthStart, bookings, onPickDay, blocks, exceptions, showClosed }) {
   const daysInMonth = monthStart.daysInMonth;
   const leading = monthStart.dayOfWeek - 1;
   const byDay = useMemo(() => {
@@ -286,16 +334,22 @@ function MonthGrid({ tenant, monthStart, bookings, onPickDay }) {
       <div className="grid grid-cols-7 gap-1.5">
         {cells.map((d, i) => {
           if (!d) return <div key={i} className="min-h-[56px] @[768px]:min-h-[78px]" />;
+          const plainDate = monthStart.with({ day: d });
           const list = byDay.get(d) || [];
           const revenue = list.filter((b) => b.status === 'confirmada' || b.status === 'completada').reduce((a, b) => a + b.total_price_clp, 0);
+          const isClosed = showClosed && !isWorkingDay(blocks, exceptions, plainDate);
           return (
             <button
               key={i}
               type="button"
-              onClick={() => onPickDay(monthStart.with({ day: d }))}
-              className="flex min-h-[56px] flex-col gap-0.5 rounded-[10px] border border-[#E2E5EC] p-1.5 text-left @[768px]:min-h-[78px] @[768px]:p-2"
+              onClick={() => onPickDay(plainDate)}
+              className={
+                'flex min-h-[56px] flex-col gap-0.5 rounded-[10px] border p-1.5 text-left @[768px]:min-h-[78px] @[768px]:p-2 ' +
+                (isClosed ? 'border-[#EDEFF3] bg-[#F7F8FA]' : 'border-[#E2E5EC]')
+              }
             >
-              <span className="font-mono text-xs font-medium">{d}</span>
+              <span className={'font-mono text-xs font-medium ' + (isClosed ? 'text-[#B6BAC6]' : '')}>{d}</span>
+              {isClosed && list.length === 0 && <span className="text-[9.5px] font-semibold uppercase tracking-wide text-[#C7CAD4]">Cerrado</span>}
               {list.length > 0 && <span className="text-[10.5px] text-[#64748B]">{list.length} citas</span>}
               {revenue > 0 && <span className="hidden font-mono text-[10.5px] text-[#3730A3] @[768px]:block">{money(revenue, tenant.currency)}</span>}
             </button>

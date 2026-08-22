@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Temporal } from '@js-temporal/polyfill';
 import { supabase } from '../../lib/supabaseClient';
 
-// Equipo completo del tenant (activos e inactivos) con sus servicios habilitados, más citas e
-// ingresos de la semana por profesional (panel_team_ranking, migración 0009).
+// Equipo completo del tenant (activos e inactivos) con su propio catálogo de servicios (cada
+// servicio pertenece a un único profesional, ver 0020_professional_owned_services.sql), más
+// citas e ingresos de la semana por profesional (panel_team_ranking, migración 0009).
 //
 // RBAC: panel_team_ranking es admin-only a nivel de RLS/función (migración 0012) -- un
 // 'professional' que la llamara igual recibiría un error de Postgres. `canSeeFinancials` evita
@@ -24,7 +25,7 @@ export function usePanelTeamManage(tenantId, timeZone, canSeeFinancials) {
     const to = weekEnd.toZonedDateTime({ timeZone }).toInstant().toString();
 
     Promise.all([
-      supabase.from('professionals').select('*, professional_services(service_id)').eq('tenant_id', tenantId).order('created_at'),
+      supabase.from('professionals').select('*, services(id)').eq('tenant_id', tenantId).order('created_at'),
       canSeeFinancials ? supabase.rpc('panel_team_ranking', { p_from: from, p_to: to }) : Promise.resolve({ data: [], error: null }),
     ]).then(([teamRes, rankRes]) => {
       if (cancelled) return;

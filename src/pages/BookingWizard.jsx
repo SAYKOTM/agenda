@@ -54,6 +54,12 @@ export default function BookingWizard() {
   const selectedServices = selectedServiceIds.map((id) => allServices.find((s) => s.id === id)).filter(Boolean);
   const totalDurationMin = selectedServices.reduce((a, s) => a + s.duration_min, 0);
   const proLabel = professionalId === 'any' ? 'cualquiera disponible' : professionals.find((p) => p.id === professionalId)?.name || '';
+  // Cada servicio pertenece a un solo profesional: al elegir uno en concreto, el paso de
+  // servicios muestra únicamente su propio catálogo (con "cualquiera disponible" se ven todos).
+  const visibleCategories =
+    professionalId && professionalId !== 'any'
+      ? categories.map((c) => ({ ...c, services: c.services.filter((s) => s.professional_id === professionalId) })).filter((c) => c.services.length > 0)
+      : categories;
   const pickedLine = slot ? `${capitalize(dateLine(Temporal.PlainDate.from(date)))} · ${hhmm(slot.startMinute)} h` : '';
 
   const stepIndex = steps.indexOf(step) + 1; // 1-based, 'done' cae fuera del rango mostrado en las migas
@@ -123,11 +129,24 @@ export default function BookingWizard() {
     <ClientShell theme={tenant.theme}>
       <WizardHeader tenant={tenant} onBack={step === 'done' ? null : goBack} stepIndex={showCrumbs ? stepIndex : null} stepCount={showCrumbs ? stepCount : null} />
 
-      {step === 'pro' && <StepProfessional professionals={professionals} selected={professionalId} onSelect={(id) => { setProfessionalId(id); setStep('services'); }} />}
+      {step === 'pro' && (
+        <StepProfessional
+          professionals={professionals}
+          selected={professionalId}
+          onSelect={(id) => {
+            if (id !== professionalId) {
+              setSelectedServiceIds([]);
+              setSlot(null);
+            }
+            setProfessionalId(id);
+            setStep('services');
+          }}
+        />
+      )}
 
       {step === 'services' && (
         <StepServices
-          categories={categories}
+          categories={visibleCategories}
           selectedIds={selectedServiceIds}
           onToggle={toggleService}
           proLabel={proLabel}

@@ -44,20 +44,19 @@ export function useTenantData(slug) {
         return setState((s) => ({ ...s, loading: false, error: 'not_found' }));
       }
 
-      const [categoriesRes, professionalsRes, proServicesRes, paymentMethodsRes, bankRes] = await Promise.all([
+      const [categoriesRes, professionalsRes, paymentMethodsRes, bankRes] = await Promise.all([
         supabase
           .from('categories')
-          .select('id, name, sort_order, services(id, name, description, duration_min, price_clp, buffer_before_min, buffer_after_min, deposit_required, deposit_amount_clp, active, sort_order)')
+          .select('id, name, sort_order, services(id, professional_id, name, description, duration_min, price_clp, buffer_before_min, buffer_after_min, deposit_required, deposit_amount_clp, active, sort_order)')
           .eq('tenant_id', tenant.id)
           .order('sort_order'),
         supabase.from('professionals').select('id, name, role_title, initials, avatar_url, rating_avg, rating_count').eq('tenant_id', tenant.id).eq('active', true),
-        supabase.from('professional_services').select('professional_id, service_id'),
         supabase.from('tenant_payment_methods').select('method, gateway').eq('tenant_id', tenant.id).eq('enabled', true),
         supabase.from('tenant_bank_accounts').select('holder, bank, account_type, account_number, rut, notice_email').eq('tenant_id', tenant.id).maybeSingle(),
       ]);
       if (cancelled) return;
 
-      const firstError = [categoriesRes, professionalsRes, proServicesRes, paymentMethodsRes].find((r) => r.error)?.error;
+      const firstError = [categoriesRes, professionalsRes, paymentMethodsRes].find((r) => r.error)?.error;
       if (firstError) return setState((s) => ({ ...s, loading: false, error: firstError.message }));
 
       const categories = (categoriesRes.data || [])
@@ -67,12 +66,7 @@ export function useTenantData(slug) {
         }))
         .filter((c) => c.services.length > 0);
 
-      const proServiceMap = new Map();
-      for (const row of proServicesRes.data || []) {
-        if (!proServiceMap.has(row.professional_id)) proServiceMap.set(row.professional_id, new Set());
-        proServiceMap.get(row.professional_id).add(row.service_id);
-      }
-      const professionals = (professionalsRes.data || []).map((p) => ({ ...p, serviceIds: proServiceMap.get(p.id) || new Set() }));
+      const professionals = professionalsRes.data || [];
 
       setState({
         loading: false,

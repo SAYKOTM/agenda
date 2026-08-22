@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Temporal } from '@js-temporal/polyfill';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -31,6 +31,29 @@ export function usePanelAppointments({ tenantId, timeZone, professionalId, scope
   }, [tenantId, timeZone, professionalId, scopeAll, from, to]);
 
   useEffect(() => load(), [load]);
+
+  // Tiempo real: cuando un cliente reserva desde la web pública (o cualquier profesional del
+  // equipo confirma/reagenda/cancela una cita), la Agenda se refresca sola sin que el
+  // profesional tenga que recargar la página. Se suscribe una sola vez por tenant -- vía ref
+  // siempre dispara el `load` más reciente, así respeta el rango de fechas y el alcance
+  // (día/semana/mes, solo yo/equipo) vigentes en cada momento sin tener que resuscribirse.
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    const channel = supabase
+      .channel(`panel-bookings-${tenantId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `tenant_id=eq.${tenantId}` }, () => {
+        loadRef.current();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tenantId]);
 
   return { ...state, reload: load };
 }

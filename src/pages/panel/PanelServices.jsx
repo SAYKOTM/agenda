@@ -7,9 +7,9 @@ import ServiceFormModal from '../../components/panel/ServiceFormModal';
 import { money, durLabel } from '../../lib/format';
 
 export default function PanelServices() {
-  const { tenant } = useOutletContext();
+  const { tenant, professional } = useOutletContext();
   const toast = useToast();
-  const { loading, error, categories, services, reload } = usePanelServices(tenant.id);
+  const { loading, error, categories, services, reload } = usePanelServices(tenant.id, professional.id);
   const [editing, setEditing] = useState(undefined); // undefined = cerrado, null = nuevo, objeto = editar
 
   const catName = Object.fromEntries(categories.map((c) => [c.id, c.name]));
@@ -28,8 +28,8 @@ export default function PanelServices() {
     <div className="flex flex-col gap-3.5">
       <div className="flex flex-wrap items-end gap-3">
         <div className="mr-auto">
-          <h1 className="text-[21px] font-extrabold tracking-tight text-[#0F172A]">Servicios</h1>
-          <p className="mt-0.5 text-[12.5px] text-[#64748B]">{services.length} servicios · {categories.length} categorías</p>
+          <h1 className="text-[21px] font-extrabold tracking-tight text-[#0F172A]">Mis servicios</h1>
+          <p className="mt-0.5 text-[12.5px] text-[#64748B]">{services.length} servicios · tu catálogo personal</p>
         </div>
         <button type="button" onClick={() => setEditing(null)} disabled={!categories.length} className="min-h-9 rounded-[9px] bg-[#0F172A] px-3.5 text-[12.5px] font-bold text-white disabled:opacity-50">+ Nuevo servicio</button>
       </div>
@@ -41,7 +41,7 @@ export default function PanelServices() {
         <div className="rounded-[16px] border border-[#E2E5EC] bg-white px-5 py-13 text-center">
           <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-[13px] bg-[#F1F2F5] text-lg">✂</div>
           <div className="text-base font-extrabold tracking-tight">Aún no tienes servicios</div>
-          <p className="mx-auto mt-1.5 max-w-[380px] text-[12.5px] text-[#64748B]">Crea tu primer servicio con duración y precio para que tus clientes puedan reservar desde tu link público.</p>
+          <p className="mx-auto mt-1.5 max-w-[380px] text-[12.5px] text-[#64748B]">Crea tu primer servicio con duración y precio para que tus clientes puedan reservarlo contigo desde el link público del salón.</p>
         </div>
       )}
 
@@ -79,6 +79,7 @@ export default function PanelServices() {
       {editing !== undefined && (
         <ServiceFormModal
           tenantId={tenant.id}
+          professionalId={professional.id}
           categories={categories}
           service={editing}
           onClose={() => setEditing(undefined)}

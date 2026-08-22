@@ -1,13 +1,25 @@
+import { useState } from 'react';
+import { formatPhoneInput } from '../../../lib/format';
+
+const PHONE_ALLOWED_CHARS = /^[0-9+\s()-]*$/;
+
 export function validateClientForm(form) {
   const errors = {};
   if (!form.name.trim()) errors.name = 'Necesitamos tu nombre para la reserva.';
-  if (!/^[0-9+\s()-]{8,}$/.test(form.phone.trim())) errors.phone = 'Ingresa un teléfono válido.';
+  if (!/^[0-9+\s()-]{8,}$/.test(form.phone.trim())) errors.phone = 'Ingresa un teléfono válido (solo números).';
   if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) errors.email = 'Ingresa un email válido.';
   return errors;
 }
 
 export default function StepForm({ form, onChange, errors, stepIndex, stepCount, onNext }) {
+  const [phoneWarning, setPhoneWarning] = useState(false);
   const field = (key) => (e) => onChange({ ...form, [key]: e.target.value });
+
+  function handlePhoneChange(e) {
+    const raw = e.target.value;
+    setPhoneWarning(!PHONE_ALLOWED_CHARS.test(raw));
+    onChange({ ...form, phone: formatPhoneInput(raw) });
+  }
 
   return (
     <>
@@ -23,8 +35,16 @@ export default function StepForm({ form, onChange, errors, stepIndex, stepCount,
         <Field label="Nombre y apellido *" error={errors.name}>
           <input value={form.name} onChange={field('name')} placeholder="Camila Aguirre" className={inputClass(!!errors.name)} />
         </Field>
-        <Field label="Teléfono *" error={errors.phone}>
-          <input value={form.phone} onChange={field('phone')} placeholder="+56 9 1234 5678" className={inputClass(!!errors.phone)} inputMode="tel" />
+        <Field label="Teléfono *" error={errors.phone} hint={phoneWarning ? 'Solo se permiten números y los símbolos + ( ) -' : null}>
+          <input
+            value={form.phone}
+            onChange={handlePhoneChange}
+            placeholder="+56 9 1234 5678"
+            className={inputClass(!!errors.phone)}
+            inputMode="tel"
+            autoComplete="tel"
+            pattern="[0-9+\s()-]*"
+          />
         </Field>
         <Field label="Email *" error={errors.email}>
           <input value={form.email} onChange={field('email')} placeholder="camila@correo.cl" className={inputClass(!!errors.email)} type="email" />
@@ -48,11 +68,16 @@ export default function StepForm({ form, onChange, errors, stepIndex, stepCount,
   );
 }
 
-function Field({ label, error, children }) {
+function Field({ label, error, hint, children }) {
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-xs font-semibold">{label}</span>
       {children}
+      {!error && hint && (
+        <span role="alert" className="text-[11.5px] text-[#96540E]">
+          {hint}
+        </span>
+      )}
       {error && (
         <span role="alert" className="text-[11.5px] text-[#C0402B]">
           {error}

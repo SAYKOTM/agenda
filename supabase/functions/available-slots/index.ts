@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
 
   const { data: services, error: svcErr } = await db
     .from('services')
-    .select('id, duration_min, buffer_before_min, buffer_after_min')
+    .select('id, professional_id, duration_min, buffer_before_min, buffer_after_min')
     .eq('tenant_id', tenant.id)
     .eq('active', true)
     .in('id', serviceIds);
@@ -76,17 +76,11 @@ Deno.serve(async (req) => {
   }
   if (!professionalIds.length) return jsonResponse({ slots: [] });
 
-  const { data: proSvcRows, error: psErr } = await db
-    .from('professional_services')
-    .select('professional_id, service_id')
-    .in('professional_id', professionalIds)
-    .in('service_id', serviceIds);
-  if (psErr) return errorResponse(psErr.message, 500);
-  const capableCount = new Map<string, number>();
-  for (const row of proSvcRows || []) {
-    capableCount.set(row.professional_id, (capableCount.get(row.professional_id) || 0) + 1);
-  }
-  const capableProfessionalIds = professionalIds.filter((id) => capableCount.get(id) === serviceIds.length);
+  // Cada servicio pertenece a UN solo profesional (ver 0020_professional_owned_services.sql): un
+  // combo de varios servicios solo es realizable si TODOS son del mismo dueño.
+  const ownerIds = new Set(services.map((s) => s.professional_id));
+  const capableProfessionalIds =
+    ownerIds.size === 1 ? professionalIds.filter((id) => id === [...ownerIds][0]) : [];
   if (!capableProfessionalIds.length) return jsonResponse({ slots: [] });
 
   // ---------- ventana del día local, para acotar la consulta de bloques/excepciones/reservas ----------

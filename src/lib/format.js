@@ -54,4 +54,23 @@ export function monthLabel(plainDate) {
   return `${capitalize(MONTHS_LONG[plainDate.month - 1])} ${plainDate.year}`;
 }
 
+// Formatea en vivo lo que el cliente escribe en el campo teléfono del checkout público: descarta
+// cualquier carácter que no sea dígito o un '+' inicial, y agrupa los dígitos como
+// "+56 9 1234 5678" cuando el prefijo es Chile, o en bloques de a 4 en cualquier otro caso.
+export function formatPhoneInput(raw) {
+  const hasPlus = raw.trim().startsWith('+');
+  const digits = raw.replace(/\D/g, '').slice(0, 15);
+  if (!digits) return hasPlus ? '+' : '';
+  if (hasPlus && digits.startsWith('56')) {
+    const rest = digits.slice(2);
+    let out = '+56';
+    if (rest.length) out += ' ' + rest.slice(0, 1);
+    if (rest.length > 1) out += ' ' + rest.slice(1, 5);
+    if (rest.length > 5) out += ' ' + rest.slice(5, 9);
+    return out;
+  }
+  const groups = digits.match(/.{1,4}/g) || [];
+  return (hasPlus ? '+' : '') + groups.join(' ');
+}
+
 export { WEEKDAYS_LONG, MONTHS_LONG };

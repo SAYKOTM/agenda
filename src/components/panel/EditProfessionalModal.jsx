@@ -4,22 +4,12 @@ import { useToast } from '../Toast';
 
 const inputCls = 'min-h-11 w-full rounded-[10px] border border-[#D3D7E0] bg-white px-3 text-[15px] text-[#0F172A]';
 
-export default function EditProfessionalModal({ professional, allServices, isSelf, onClose, onSaved }) {
+export default function EditProfessionalModal({ professional, isSelf, onClose, onSaved }) {
   const toast = useToast();
   const [roleTitle, setRoleTitle] = useState(professional.role_title || '');
   const [role, setRole] = useState(professional.role);
   const [commissionPct, setCommissionPct] = useState(professional.commission_pct ?? 0);
-  const [serviceIds, setServiceIds] = useState(new Set((professional.professional_services || []).map((r) => r.service_id)));
   const [saving, setSaving] = useState(false);
-
-  function toggleService(id) {
-    setServiceIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
 
   async function save() {
     setSaving(true);
@@ -27,16 +17,11 @@ export default function EditProfessionalModal({ professional, allServices, isSel
       .from('professionals')
       .update({ role_title: roleTitle, role, commission_pct: Number(commissionPct) || 0 })
       .eq('id', professional.id);
+    setSaving(false);
     if (profErr) {
-      setSaving(false);
       toast('No pudimos guardar los permisos');
       return;
     }
-    const { error: delErr } = await supabase.from('professional_services').delete().eq('professional_id', professional.id);
-    if (!delErr && serviceIds.size) {
-      await supabase.from('professional_services').insert([...serviceIds].map((service_id) => ({ professional_id: professional.id, service_id })));
-    }
-    setSaving(false);
     toast('Permisos actualizados');
     onSaved();
     onClose();
@@ -72,17 +57,7 @@ export default function EditProfessionalModal({ professional, allServices, isSel
           <span className="text-[11px] text-[#64748B]">% de sus ingresos que se le paga como comisión. Se usa en el Resumen financiero.</span>
         </label>
 
-        <div className="flex flex-col gap-1.5">
-          <span className="text-[11.5px] font-bold text-[#475569]">Servicios habilitados</span>
-          <div className="flex flex-col gap-1 rounded-[11px] border border-[#E2E5EC] p-2">
-            {allServices.map((s) => (
-              <label key={s.id} className="flex items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-[13px] hover:bg-[#F7F8FA]">
-                <input type="checkbox" checked={serviceIds.has(s.id)} onChange={() => toggleService(s.id)} />
-                {s.name}
-              </label>
-            ))}
-          </div>
-        </div>
+        <p className="text-[11.5px] text-[#64748B]">Cada profesional gestiona su propio catálogo de servicios desde "Mis servicios" en su panel.</p>
 
         <button type="button" onClick={save} disabled={saving} className="mt-1 min-h-12 rounded-[13px] bg-[#0F172A] text-[14px] font-bold text-white disabled:opacity-50">
           {saving ? 'Guardando…' : 'Guardar permisos'}

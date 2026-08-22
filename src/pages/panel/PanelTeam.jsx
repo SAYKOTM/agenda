@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { usePanelTeamManage } from '../../features/panel/usePanelTeamManage';
-import { usePanelServices } from '../../features/panel/usePanelServices';
 import { useToast } from '../../components/Toast';
 import InviteProfessionalModal from '../../components/panel/InviteProfessionalModal';
 import EditProfessionalModal from '../../components/panel/EditProfessionalModal';
@@ -13,7 +12,6 @@ export default function PanelTeam() {
   const toast = useToast();
   const canSeeFinancials = me.role === 'admin';
   const { loading, error, team, ranking, reload } = usePanelTeamManage(tenant.id, tenant.timezone, canSeeFinancials);
-  const { services } = usePanelServices(tenant.id);
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState(null);
 
@@ -64,7 +62,7 @@ export default function PanelTeam() {
                       <span className={'rounded-[7px] px-2 py-0.5 text-[10.5px] font-bold ' + (p.active ? 'bg-[#E7F4EC] text-[#1E6B43]' : 'bg-[#F2F4F7] text-[#64748B]')}>{p.active ? 'Activo' : 'Suspendido'}</span>
                       {p.role === 'admin' && <span className="rounded-[7px] bg-[#E9EBFD] px-2 py-0.5 text-[10.5px] font-bold text-[#3730A3]">Admin</span>}
                     </div>
-                    <div className="truncate text-[11.5px] text-[#64748B]">{p.role_title || '—'} · {(p.professional_services || []).length} servicios · {p.commission_pct}% comisión</div>
+                    <div className="truncate text-[11.5px] text-[#64748B]">{p.role_title || '—'} · {(p.services || []).length} servicios propios · {p.commission_pct}% comisión</div>
                   </div>
                 </div>
                 {canSeeFinancials && (
@@ -92,7 +90,7 @@ export default function PanelTeam() {
       )}
 
       {inviting && <InviteProfessionalModal onClose={() => setInviting(false)} onInvited={reload} />}
-      {editing && <EditProfessionalModal professional={editing} allServices={services} isSelf={editing.id === me.id} onClose={() => setEditing(null)} onSaved={reload} />}
+      {editing && <EditProfessionalModal professional={editing} isSelf={editing.id === me.id} onClose={() => setEditing(null)} onSaved={reload} />}
     </div>
   );
 }

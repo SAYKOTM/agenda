@@ -12,7 +12,7 @@ const emptyDraft = (tenantId, categoryId) => ({
 
 const COLOR_PRESETS = ['#4F46E5', '#2C8B58', '#E0891B', '#C0402B', '#7C3AED', '#0891B2', '#DB2777', '#64748B'];
 
-export default function ServiceFormModal({ tenantId, categories, service, onClose, onSaved }) {
+export default function ServiceFormModal({ tenantId, professionalId, categories, service, onClose, onSaved }) {
   const toast = useToast();
   const [draft, setDraft] = useState(service ? { ...service } : emptyDraft(tenantId, categories[0]?.id));
   const [saving, setSaving] = useState(false);
@@ -28,7 +28,7 @@ export default function ServiceFormModal({ tenantId, categories, service, onClos
     }
     setSaving(true);
     const payload = {
-      tenant_id: tenantId, category_id: draft.category_id, name: draft.name.trim(), description: draft.description || null,
+      tenant_id: tenantId, professional_id: professionalId, category_id: draft.category_id, name: draft.name.trim(), description: draft.description || null,
       duration_min: Number(draft.duration_min) || 1, price_clp: Number(draft.price_clp) || 0,
       buffer_before_min: Number(draft.buffer_before_min) || 0, buffer_after_min: Number(draft.buffer_after_min) || 0,
       deposit_required: !!draft.deposit_required, deposit_amount_clp: draft.deposit_required ? Number(draft.deposit_amount_clp) || 0 : null,
