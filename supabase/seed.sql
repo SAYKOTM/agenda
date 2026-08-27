@@ -13,13 +13,13 @@ values
    'Av. Italia 1420, Providencia, Santiago', '+56 2 2345 6789', '@roblesalon',
    'America/Santiago', 4.9, 212,
    '{"bg":"#0F1219","panel":"#171C26","ink":"#F3F5F8","sub":"#8B96A6","border":"#242C39","accent":"#FF5A2B","accentInk":"#0F1219"}'::jsonb,
-   60, 30, 'Lun a Vie 10:00–20:00 · Sáb 10:00–16:00'),
+   60, 15, 'Lun a Vie 10:00–20:00 · Sáb 10:00–16:00'),
   ('b0000000-0000-0000-0000-000000000000', 'lumiere-salon', 'Lumière Salón', 'L',
    'Color y estilismo · Vitacura', 'Color hecho a tu medida.',
    'Alonso de Córdova 3250, Vitacura, Santiago', '+56 2 2345 6789', '@lumieresalon',
    'America/Santiago', 4.8, 348,
    '{"bg":"#F7F7FA","panel":"#FFFFFF","ink":"#131722","sub":"#737C8D","border":"#E6E8F0","accent":"#6D4DF6","accentInk":"#FFFFFF"}'::jsonb,
-   60, 30, 'Mar a Sáb 09:30–19:30');
+   60, 15, 'Mar a Sáb 09:30–19:30');
 
 insert into tenant_bank_accounts (tenant_id, holder, bank, account_type, account_number, rut, notice_email) values
   ('a0000000-0000-0000-0000-000000000000', 'Roble SpA', 'Banco de Chile', 'Cuenta Corriente', '000-12345678-01', '77.412.900-5', 'pagos@roblebarberia.cl'),

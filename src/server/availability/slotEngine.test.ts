@@ -220,6 +220,28 @@ describe('computeAvailableSlots', () => {
     expect(slots).toEqual([]);
   });
 
+  it('servicio de duración irregular (75 min) no deja hora muerta: el siguiente cupo cae justo al terminar', () => {
+    // Turno de 75 min que arranca a las 10:00 (600) ocupa hasta las 11:15 (675) exacto. Con grilla
+    // de 15 min el próximo cupo debe ofrecerse en 675, no saltar a 690 (11:30) o 720 (12:00).
+    const existing = {
+      startInstant: '2026-08-19T14:00:00Z', // 10:00 local
+      endInstant: '2026-08-19T15:15:00Z', // 11:15 local (75 min)
+      status: 'confirmada',
+    };
+    const slots = computeAvailableSlots({
+      timeZone: TZ,
+      date: WED,
+      services: [{ id: 'x', durationMin: 30 }],
+      weeklyBlocks: ROBLE_BLOCKS,
+      existingBookings: [existing],
+      slotIntervalMin: 15,
+      now: farPastNow(),
+    });
+    const afterExisting = slots.filter((s) => s.startMinute >= 675).map((s) => s.startMinute);
+    expect(afterExisting[0]).toBe(675); // 11:15, sin hueco muerto
+    expect(slots.some((s) => s.startMinute > 600 && s.startMinute < 675)).toBe(false); // nada solapa el ocupado
+  });
+
   it('cambio de horario de verano: el motor usa tiempo real (Instant), no aritmética ingenua en UTC', () => {
     // Busca en el tzdb real un día con transición de horario de verano para America/Santiago,
     // escaneando varios años históricos para no depender de una fecha memorizada a mano.

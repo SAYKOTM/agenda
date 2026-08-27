@@ -1,5 +1,9 @@
+import { useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { usePanelSession } from '../../features/panel/usePanelSession';
+import { hasActiveAccess } from '../../lib/subscription';
+import { createCheckoutSession } from '../../lib/api';
+import { useToast } from '../../components/Toast';
 
 // Todo profesional ve su propio panel (Hoy/Agenda/Servicios/Disponibilidad/Perfil, fase 3).
 // Un 'admin' además ve el nivel del salón completo (Resumen/Equipo/Estaciones/Pagos/Ajustes,
@@ -23,7 +27,20 @@ const ADMIN_NAV = [
 
 export default function PanelLayout() {
   const location = useLocation();
+  const toast = useToast();
   const { loading, session, professional, tenant, error, signOut, refresh } = usePanelSession();
+  const [startingCheckout, setStartingCheckout] = useState(false);
+
+  async function startCheckout() {
+    setStartingCheckout(true);
+    try {
+      const { url } = await createCheckoutSession();
+      window.location.href = url;
+    } catch (e) {
+      toast(e.message || 'No pudimos iniciar el pago');
+      setStartingCheckout(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -40,6 +57,43 @@ export default function PanelLayout() {
         <button type="button" onClick={signOut} className="rounded-[11px] border border-[#E2E5EC] bg-white px-4 py-2 text-[13px] font-semibold">
           Cerrar sesión
         </button>
+      </div>
+    );
+  }
+
+  // Objetivo 4 (regla de acceso): 'trialing' cuenta solo mientras trial_ends_at no venció,
+  // 'active' y 'past_due' (período de gracia tras un cobro fallido) pasan; 'canceled' y 'unpaid'
+  // quedan afuera. Esto bloquea SOLO el panel -- la página pública de reservas del tenant sigue
+  // funcionando igual (tenants_public_read en RLS no depende de la suscripción a propósito).
+  if (!hasActiveAccess(tenant)) {
+    const isAdmin = professional.role === 'admin';
+    const reason =
+      tenant.subscription_status === 'canceled'
+        ? 'Tu suscripción fue cancelada.'
+        : tenant.subscription_status === 'unpaid'
+          ? 'No pudimos procesar el pago y se agotó el período de gracia.'
+          : 'Tu período de prueba de 7 días terminó.';
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#F1F2F5] px-6 text-center">
+        <p className="text-base font-bold text-[#0F172A]">Suscripción inactiva</p>
+        <p className="max-w-sm text-sm text-[#64748B]">
+          {reason} {isAdmin ? 'Agrega un método de pago para recuperar el acceso.' : 'Pídele al administrador del salón que reactive la suscripción.'}
+        </p>
+        <div className="flex gap-2">
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={startCheckout}
+              disabled={startingCheckout}
+              className="rounded-[11px] bg-[#0F172A] px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
+            >
+              {startingCheckout ? 'Abriendo pago…' : 'Agregar método de pago'}
+            </button>
+          )}
+          <button type="button" onClick={signOut} className="rounded-[11px] border border-[#E2E5EC] bg-white px-4 py-2 text-[13px] font-semibold">
+            Cerrar sesión
+          </button>
+        </div>
       </div>
     );
   }

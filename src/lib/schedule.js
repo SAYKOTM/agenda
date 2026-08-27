@@ -58,6 +58,26 @@ export function isWorkingDay(weeklyBlocks, exceptions, date) {
   return effectiveWindowsForDate(weeklyBlocks, exceptions, date).length > 0;
 }
 
+// Divide un bloque {start_min, end_min} en dos si el intervalo de colación [lunchStart, lunchEnd)
+// queda estrictamente adentro (con margen a ambos lados). Si la colación no cabe completa dentro
+// del bloque -- el día está cerrado (sin bloques), el bloque es más corto que la colación, o solo
+// se solapa parcialmente en un borde -- se devuelve el bloque sin tocar: nunca se genera un
+// bloque de duración cero ni se recorta un bloque que no puede alojar la colación completa.
+export function splitBlockForLunch(block, lunchStart, lunchEnd) {
+  if (lunchStart <= block.start_min || lunchEnd >= block.end_min) return [block];
+  return [
+    { ...block, end_min: lunchStart },
+    { ...block, start_min: lunchEnd },
+  ];
+}
+
+// Aplica la colación a todos los bloques de un mismo día: cada bloque se evalúa por separado, así
+// que un turno partido armado a mano (p. ej. 09:00-13:00 y 15:00-19:00) solo se divide en el
+// bloque que efectivamente contiene la colación -- el resto queda intacto.
+export function applyLunchBreakToDayBlocks(dayBlocks, lunchStart, lunchEnd) {
+  return dayBlocks.flatMap((b) => splitBlockForLunch(b, lunchStart, lunchEnd));
+}
+
 // Tramos NO laborales dentro de [dayStartMin, dayEndMin), para pintar overlays grises en la
 // grilla de horas de la Agenda del panel.
 export function closedRangesWithin(weeklyBlocks, exceptions, date, dayStartMin, dayEndMin) {

@@ -32,3 +32,5 @@ input,textarea,select{font:inherit}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:#CBD0DB;border-radius:8px;border:3px solid transparent;background-clip:content-box}
+.hide-scrollbar{scrollbar-width:none}
+.hide-scrollbar::-webkit-scrollbar{display:none}

@@ -3,23 +3,19 @@ import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { usePanelAvailability } from '../../features/panel/usePanelAvailability';
 import { useToast } from '../../components/Toast';
-import { durLabel, WEEKDAYS_LONG, capitalize } from '../../lib/format';
+import DatePicker from '../../components/panel/DatePicker';
+import TimeWheelPicker from '../../components/panel/TimeWheelPicker';
+import { durLabel, hhmm, WEEKDAYS_LONG, capitalize } from '../../lib/format';
+import { applyLunchBreakToDayBlocks } from '../../lib/schedule';
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
-
-function toTimeStr(min) {
-  return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
-}
-function toMinutes(timeStr) {
-  const [h, m] = timeStr.split(':').map(Number);
-  return h * 60 + m;
-}
 
 export default function PanelAvailability() {
   const { professional } = useOutletContext();
   const toast = useToast();
   const { loading, error, blocks, exceptions, reload } = usePanelAvailability(professional.id);
   const [addingException, setAddingException] = useState(false);
+  const [configuringLunch, setConfiguringLunch] = useState(false);
 
   const totalMin = blocks.reduce((a, b) => a + (b.end_min - b.start_min), 0);
 
@@ -32,8 +28,7 @@ export default function PanelAvailability() {
     else { toast('Bloque agregado'); reload(); }
   }
 
-  async function updateBlock(block, field, timeStr) {
-    const minutes = toMinutes(timeStr);
+  async function updateBlock(block, field, minutes) {
     const patch = { [field]: minutes };
     if (field === 'start_min' && minutes >= block.end_min) return;
     if (field === 'end_min' && minutes <= block.start_min) return;
@@ -48,6 +43,40 @@ export default function PanelAvailability() {
     else { toast('Bloque eliminado'); reload(); }
   }
 
+  // Recorre cada día de la semana y, donde el turno lo permita, reemplaza el bloque que contiene
+  // la colación por los dos bloques resultantes (ver splitBlockForLunch en lib/schedule). No hay
+  // un botón "Guardar" global para el horario semanal -- cada bloque se persiste al toque, igual
+  // que addBlock/updateBlock/deleteBlock de arriba -- así que esto hace lo mismo: una serie de
+  // inserts/deletes directos contra availability_blocks. Nunca toca availability_exceptions.
+  async function applyLunchBreak(lunchStart, lunchEnd) {
+    let daysAffected = 0;
+    for (const dw of WEEKDAYS) {
+      const dayBlocks = blocks.filter((b) => b.weekday === dw);
+      if (!dayBlocks.length) continue; // día cerrado: no hacer nada
+
+      let dayChanged = false;
+      for (const block of dayBlocks) {
+        const split = applyLunchBreakToDayBlocks([block], lunchStart, lunchEnd);
+        if (split.length < 2) continue; // la colación no cae adentro de este bloque
+
+        // Inserta primero los dos bloques nuevos y recién después borra el original: si el
+        // insert fallara, el bloque original queda intacto en vez de desaparecer sin reemplazo.
+        const { error: insError } = await supabase.from('availability_blocks').insert(
+          split.map((s) => ({ professional_id: professional.id, weekday: dw, start_min: s.start_min, end_min: s.end_min }))
+        );
+        if (insError) continue;
+        const { error: delError } = await supabase.from('availability_blocks').delete().eq('id', block.id);
+        if (delError) continue;
+        dayChanged = true;
+      }
+      if (dayChanged) daysAffected++;
+    }
+
+    setConfiguringLunch(false);
+    reload();
+    toast(daysAffected ? `Colación aplicada en ${daysAffected} día${daysAffected === 1 ? '' : 's'}` : 'Ningún turno cruzaba ese horario de colación');
+  }
+
   async function deleteException(id) {
     const { error } = await supabase.from('availability_exceptions').delete().eq('id', id);
     if (error) toast('No pudimos eliminar la excepción');
@@ -55,69 +84,185 @@ export default function PanelAvailability() {
   }
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="relative isolate flex flex-col gap-4">
+      <div aria-hidden="true" className="pointer-events-none absolute -top-24 right-0 -z-10 h-72 w-72 rounded-full bg-indigo-200/40 blur-[90px]" />
+      <div aria-hidden="true" className="pointer-events-none absolute bottom-0 left-0 -z-10 h-72 w-72 rounded-full bg-rose-100/40 blur-[90px]" />
+
       <div className="flex flex-wrap items-end gap-3">
         <div className="mr-auto">
-          <h1 className="text-[21px] font-extrabold tracking-tight text-[#0F172A]">Disponibilidad</h1>
-          <p className="mt-0.5 text-[12.5px] text-[#64748B]">Horario semanal recurrente y excepciones</p>
+          <h1 className="text-[22px] font-extrabold tracking-tight text-slate-900">Disponibilidad</h1>
+          <p className="mt-1 text-[13px] text-slate-500">Horario semanal recurrente y excepciones</p>
         </div>
-        <button type="button" onClick={() => setAddingException(true)} className="min-h-9 rounded-[9px] bg-[#0F172A] px-3.5 text-[12.5px] font-bold text-white">+ Excepción</button>
+        <button type="button" onClick={() => setAddingException(true)} className="min-h-10 rounded-2xl bg-slate-900 px-4 text-[12.5px] font-bold text-white shadow-sm transition-transform active:scale-[0.97]">
+          + Excepción
+        </button>
       </div>
 
-      {error && <p className="text-sm text-[#C0402B]">{error}</p>}
-      {loading && <p className="py-8 text-center text-sm text-[#64748B]">Cargando…</p>}
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+      {loading && <p className="py-8 text-center text-sm text-slate-500">Cargando…</p>}
 
       {!loading && !error && (
-        <div className="grid grid-cols-1 items-start gap-3 @[900px]:grid-cols-2">
-          <div className="overflow-hidden rounded-[16px] border border-[#E2E5EC] bg-white">
-            <div className="flex items-center justify-between border-b border-[#E2E5EC] px-3.5 py-3">
-              <span className="text-[13.5px] font-bold">Horario semanal recurrente</span>
-              <span className="font-mono text-[11px] text-[#64748B]">{durLabel(totalMin)} a la semana</span>
+        <div className="grid grid-cols-1 items-start gap-4 @[900px]:grid-cols-2">
+          <div className="overflow-hidden rounded-[28px] border border-white/60 bg-white/70 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_24px_48px_-28px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+            <div className="flex items-center justify-between border-b border-slate-900/5 px-5 py-4">
+              <span className="text-[14px] font-bold text-slate-800">Horario semanal recurrente</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfiguringLunch((v) => !v)}
+                  className="rounded-full border border-slate-200/80 bg-white/70 px-3 py-1 text-[11.5px] font-semibold text-slate-600 backdrop-blur-sm transition-colors hover:border-slate-300 hover:text-slate-900"
+                >
+                  Configurar colación
+                </button>
+                <span className="rounded-full bg-indigo-50 px-2.5 py-1 font-mono text-[11px] font-semibold text-indigo-400">{durLabel(totalMin)} / semana</span>
+              </div>
             </div>
+            {configuringLunch && <LunchBreakForm onCancel={() => setConfiguringLunch(false)} onApply={applyLunchBreak} />}
             {WEEKDAYS.map((dw) => {
               const dayBlocks = blocks.filter((b) => b.weekday === dw);
               return (
-                <div key={dw} className="flex flex-col gap-2 border-b border-[#F1F2F5] px-3.5 py-2.5 @[500px]:flex-row @[500px]:items-start">
-                  <div className="w-20 flex-none pt-1.5 text-[12.5px] font-semibold">{capitalize(WEEKDAYS_LONG[dw])}</div>
-                  <div className="flex flex-1 flex-wrap items-center gap-1.5">
+                <div key={dw} className="flex flex-col gap-2.5 border-b border-slate-900/5 px-5 py-3.5 last:border-b-0 @[500px]:flex-row @[500px]:items-start">
+                  <div className="w-24 flex-none pt-2 text-[13px] font-semibold text-slate-700">{capitalize(WEEKDAYS_LONG[dw])}</div>
+                  <div className="flex flex-1 flex-wrap items-center gap-2">
                     {dayBlocks.map((b) => (
-                      <div key={b.id} className="flex items-center gap-1.5 rounded-[9px] border border-[#D7DAFB] bg-[#F3F4FE] py-1 pl-2.5 pr-1.5">
-                        <input type="time" defaultValue={toTimeStr(b.start_min)} onBlur={(e) => updateBlock(b, 'start_min', e.target.value)} className="w-[74px] border-none bg-transparent font-mono text-[11.5px] font-medium text-[#3730A3]" />
-                        <span className="text-[11px] text-[#3730A3]">–</span>
-                        <input type="time" defaultValue={toTimeStr(b.end_min)} onBlur={(e) => updateBlock(b, 'end_min', e.target.value)} className="w-[74px] border-none bg-transparent font-mono text-[11.5px] font-medium text-[#3730A3]" />
-                        <button type="button" onClick={() => deleteBlock(b.id)} aria-label="Eliminar bloque" className="flex h-6 w-6 flex-none items-center justify-center rounded-[6px] bg-[#E4E6FC] text-[11px] text-[#3730A3]">✕</button>
+                      <div key={b.id} className="group flex items-center gap-1 rounded-2xl border border-slate-200/70 bg-white py-1.5 pl-3 pr-1.5 shadow-sm">
+                        <TimeWheelPicker value={b.start_min} onChange={(m) => updateBlock(b, 'start_min', m)} label="Hora de inicio" />
+                        <span className="text-[12px] text-slate-300">–</span>
+                        <TimeWheelPicker value={b.end_min} onChange={(m) => updateBlock(b, 'end_min', m)} label="Hora de fin" />
+                        <button
+                          type="button"
+                          onClick={() => deleteBlock(b.id)}
+                          aria-label="Eliminar bloque"
+                          className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-[11px] text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-400"
+                        >
+                          ✕
+                        </button>
                       </div>
                     ))}
-                    {dayBlocks.length === 0 && <span className="rounded-[9px] bg-[#F1F2F5] px-2.5 py-1.5 text-[11.5px] text-[#64748B]">Cerrado</span>}
-                    <button type="button" onClick={() => addBlock(dw)} className="min-h-7.5 rounded-[9px] border border-dashed border-[#C0C5D2] px-2.5 text-[11.5px] font-semibold text-[#475569]">+ Bloque</button>
+                    {dayBlocks.length === 0 && <span className="rounded-2xl bg-slate-100/70 px-3 py-2 text-[12px] font-medium text-slate-400">Cerrado</span>}
+                    <button
+                      type="button"
+                      onClick={() => addBlock(dw)}
+                      className="min-h-8 rounded-2xl border border-dashed border-slate-300 px-3 text-[12px] font-semibold text-slate-500 transition-colors hover:border-slate-400 hover:bg-white/60 hover:text-slate-700"
+                    >
+                      + Bloque
+                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-3.5">
-            <div className="mb-2.5 text-[13.5px] font-bold">Excepciones puntuales</div>
+          <div className="rounded-[28px] border border-white/60 bg-white/70 p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_24px_48px_-28px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+            <div className="mb-3 text-[14px] font-bold text-slate-800">Excepciones puntuales</div>
             {addingException && <ExceptionForm professionalId={professional.id} onDone={() => { setAddingException(false); reload(); }} onCancel={() => setAddingException(false)} toast={toast} />}
-            {exceptions.length === 0 && !addingException && <p className="text-[12.5px] text-[#64748B]">Sin excepciones registradas.</p>}
+            {exceptions.length === 0 && !addingException && <p className="text-[12.5px] text-slate-500">Sin excepciones registradas.</p>}
             <div className="flex flex-col gap-2">
               {exceptions.map((e) => (
-                <div key={e.id} className="flex items-center gap-2.5 rounded-[11px] border border-[#E2E5EC] px-2.5 py-2">
-                  <span className="w-16 flex-none font-mono text-[11px]">{e.date}</span>
-                  <span className="min-w-0 flex-1 text-[12.5px]">
+                <div key={e.id} className="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/60 px-3.5 py-2.5">
+                  <span className="flex-none rounded-lg bg-slate-100/80 px-2 py-1 font-mono text-[10.5px] font-semibold text-slate-600">{e.date}</span>
+                  <span className="min-w-0 flex-1 text-[12.5px] text-slate-700">
                     {e.type === 'blocked' ? 'Bloqueo' : 'Extra'}
-                    {e.start_min != null ? ` · ${toTimeStr(e.start_min)}–${toTimeStr(e.end_min)}` : ' · día completo'}
+                    {e.start_min != null ? ` · ${hhmm(e.start_min)}–${hhmm(e.end_min)}` : ' · día completo'}
                     {e.reason ? ` · ${e.reason}` : ''}
                   </span>
-                  <span className={'flex-none rounded-[7px] px-2 py-0.5 text-[10.5px] font-bold ' + (e.type === 'blocked' ? 'bg-[#FBE7E4] text-[#A33421]' : 'bg-[#E7F4EC] text-[#1E6B43]')}>{e.type === 'blocked' ? 'Bloqueo' : 'Extra'}</span>
-                  <button type="button" onClick={() => deleteException(e.id)} aria-label="Eliminar excepción" className="flex-none text-[13px] text-[#A33421]">✕</button>
+                  <span className={'flex flex-none items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-bold ' + (e.type === 'blocked' ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600')}>
+                    <span className={'h-1.5 w-1.5 rounded-full ' + (e.type === 'blocked' ? 'bg-rose-400' : 'bg-emerald-400')} />
+                    {e.type === 'blocked' ? 'Bloqueo' : 'Extra'}
+                  </span>
+                  <button type="button" onClick={() => deleteException(e.id)} aria-label="Eliminar excepción" className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-[12px] text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-400">
+                    ✕
+                  </button>
                 </div>
               ))}
             </div>
-            <p className="mt-2.5 text-[11.5px] text-[#64748B]">Las excepciones se aplican sobre el horario recurrente y se reflejan de inmediato en el link público.</p>
+            <p className="mt-3 text-[11.5px] text-slate-400">Las excepciones se aplican sobre el horario recurrente y se reflejan de inmediato en el link público.</p>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Switch({ checked, onChange, label }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="flex items-center gap-2.5 text-[12.5px] font-medium text-slate-600"
+    >
+      <span className={'relative h-6 w-10 flex-none rounded-full transition-colors ' + (checked ? 'bg-slate-900' : 'bg-slate-200')}>
+        <span className={'absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ' + (checked ? 'translate-x-4' : 'translate-x-0')} />
+      </span>
+      {label}
+    </button>
+  );
+}
+
+function TypeToggle({ value, onChange }) {
+  return (
+    <div className="flex rounded-2xl border border-slate-200/80 bg-white/70 p-1 backdrop-blur-sm">
+      {[
+        { v: 'blocked', l: 'Bloqueo' },
+        { v: 'extra', l: 'Extra' },
+      ].map((opt) => (
+        <button
+          key={opt.v}
+          type="button"
+          onClick={() => onChange(opt.v)}
+          className={
+            'flex-1 rounded-xl py-2 text-[12.5px] font-semibold transition-colors ' +
+            (value === opt.v ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800')
+          }
+        >
+          {opt.l}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Panel para elegir el horario de colación y aplicarlo a todos los días con turno activo. Solo
+// junta start/end en estado local: la división real de bloques vive en applyLunchBreak (arriba),
+// que es quien decide qué persistir -- este componente no toca Supabase directamente.
+function LunchBreakForm({ onCancel, onApply }) {
+  const [start, setStart] = useState(840); // 14:00
+  const [end, setEnd] = useState(900); // 15:00
+  const [applying, setApplying] = useState(false);
+
+  async function apply() {
+    if (end <= start) return;
+    setApplying(true);
+    await onApply(start, end);
+    setApplying(false);
+  }
+
+  return (
+    <div className="mx-5 mb-1 mt-4 flex flex-col gap-3 rounded-[22px] border border-slate-200/60 bg-white/60 p-4">
+      <p className="text-[12.5px] text-slate-500">
+        Divide automáticamente los turnos que crucen este horario en dos bloques, dejando la colación libre entre ellos.
+      </p>
+      <div className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200/70 bg-white/70 py-2">
+        <TimeWheelPicker value={start} onChange={setStart} label="Inicio de colación" />
+        <span className="text-[12px] text-slate-300">–</span>
+        <TimeWheelPicker value={end} onChange={setEnd} label="Fin de colación" />
+      </div>
+      {end <= start && <p className="text-[11.5px] text-rose-500">La hora de fin debe ser posterior al inicio.</p>}
+      <div className="flex gap-2.5">
+        <button type="button" onClick={onCancel} className="min-h-10 flex-1 rounded-2xl border border-slate-200/80 bg-white/60 text-[12.5px] font-semibold text-slate-600">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={apply}
+          disabled={applying || end <= start}
+          className="min-h-10 flex-1 rounded-2xl bg-slate-900 text-[12.5px] font-bold text-white shadow-sm disabled:opacity-50"
+        >
+          Aplicar colación
+        </button>
+      </div>
     </div>
   );
 }
@@ -126,8 +271,8 @@ function ExceptionForm({ professionalId, onDone, onCancel, toast }) {
   const [date, setDate] = useState('');
   const [type, setType] = useState('blocked');
   const [fullDay, setFullDay] = useState(true);
-  const [start, setStart] = useState('10:00');
-  const [end, setEnd] = useState('14:00');
+  const [start, setStart] = useState(600);
+  const [end, setEnd] = useState(840);
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -140,8 +285,8 @@ function ExceptionForm({ professionalId, onDone, onCancel, toast }) {
     const partial = type === 'extra' || !fullDay;
     const { error } = await supabase.from('availability_exceptions').insert({
       professional_id: professionalId, date, type,
-      start_min: partial ? toMinutes(start) : null,
-      end_min: partial ? toMinutes(end) : null,
+      start_min: partial ? start : null,
+      end_min: partial ? end : null,
       reason: reason || null,
     });
     setSaving(false);
@@ -150,30 +295,32 @@ function ExceptionForm({ professionalId, onDone, onCancel, toast }) {
   }
 
   return (
-    <div className="mb-3 flex flex-col gap-2.5 rounded-[13px] border border-[#E2E5EC] p-3">
-      <div className="grid grid-cols-2 gap-2">
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="min-h-10 rounded-[9px] border border-[#D3D7E0] px-2.5 text-[13px]" />
-        <select value={type} onChange={(e) => setType(e.target.value)} className="min-h-10 rounded-[9px] border border-[#D3D7E0] px-2.5 text-[13px]">
-          <option value="blocked">Bloqueo</option>
-          <option value="extra">Extra</option>
-        </select>
+    <div className="mb-4 flex flex-col gap-3 rounded-[22px] border border-slate-200/60 bg-white/60 p-4">
+      <div className="grid grid-cols-1 gap-2.5 @[420px]:grid-cols-2">
+        <DatePicker value={date} onChange={setDate} />
+        <TypeToggle value={type} onChange={setType} />
       </div>
-      {type === 'blocked' && (
-        <label className="flex items-center gap-2 text-[12.5px]">
-          <input type="checkbox" checked={fullDay} onChange={(e) => setFullDay(e.target.checked)} />
-          Bloquear el día completo
-        </label>
-      )}
+      {type === 'blocked' && <Switch checked={fullDay} onChange={setFullDay} label="Bloquear el día completo" />}
       {(type === 'extra' || !fullDay) && (
-        <div className="grid grid-cols-2 gap-2">
-          <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="min-h-10 rounded-[9px] border border-[#D3D7E0] px-2.5 text-[13px]" />
-          <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="min-h-10 rounded-[9px] border border-[#D3D7E0] px-2.5 text-[13px]" />
+        <div className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200/70 bg-white/70 py-2">
+          <TimeWheelPicker value={start} onChange={setStart} label="Hora de inicio" />
+          <span className="text-[12px] text-slate-300">–</span>
+          <TimeWheelPicker value={end} onChange={setEnd} label="Hora de fin" />
         </div>
       )}
-      <input placeholder="Motivo (opcional)" value={reason} onChange={(e) => setReason(e.target.value)} className="min-h-10 rounded-[9px] border border-[#D3D7E0] px-2.5 text-[13px]" />
-      <div className="flex gap-2">
-        <button type="button" onClick={onCancel} className="min-h-9 flex-1 rounded-[9px] border border-[#E2E5EC] text-[12.5px] font-semibold">Cancelar</button>
-        <button type="button" onClick={save} disabled={saving} className="min-h-9 flex-1 rounded-[9px] bg-[#0F172A] text-[12.5px] font-bold text-white disabled:opacity-50">Guardar</button>
+      <input
+        placeholder="Motivo (opcional)"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        className="min-h-11 rounded-2xl border border-slate-200/80 bg-white/70 px-3.5 text-[13px] text-slate-700 placeholder:text-slate-400 backdrop-blur-sm"
+      />
+      <div className="flex gap-2.5">
+        <button type="button" onClick={onCancel} className="min-h-10 flex-1 rounded-2xl border border-slate-200/80 bg-white/60 text-[12.5px] font-semibold text-slate-600">
+          Cancelar
+        </button>
+        <button type="button" onClick={save} disabled={saving} className="min-h-10 flex-1 rounded-2xl bg-slate-900 text-[12.5px] font-bold text-white shadow-sm disabled:opacity-50">
+          Guardar
+        </button>
       </div>
     </div>
   );

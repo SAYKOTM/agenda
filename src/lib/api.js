@@ -74,3 +74,7 @@ export function submitReview(token, rating, comment) {
 export function inviteProfessional(payload) {
   return callAuthed('invite-professional', { method: 'POST', body: payload });
 }
+
+export function createCheckoutSession(payload = {}) {
+  return callAuthed('create-checkout-session', { method: 'POST', body: payload });
+}
