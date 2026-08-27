@@ -1,0 +1,284 @@
+{
+  "name": "Agenda - WhatsApp Salientes",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agenda/booking-created",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wh-created",
+      "name": "Webhook: Booking Created",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, -260],
+      "webhookId": "agenda-booking-created"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agenda/booking-status-changed",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wh-status",
+      "name": "Webhook: Booking Status Changed",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, 0],
+      "webhookId": "agenda-booking-status-changed"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agenda/booking-reminder",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wh-reminder",
+      "name": "Webhook: Booking Reminder",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, 260],
+      "webhookId": "agenda-booking-reminder"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-secret-created",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-secret-created",
+      "name": "IF: Validar Secreto (Created)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [40, -260]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-secret-status",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-secret-status",
+      "name": "IF: Validar Secreto (Status Changed)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [40, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-secret-reminder",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-secret-reminder",
+      "name": "IF: Validar Secreto (Reminder)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [40, 260]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { DateTime } = require('luxon');\nconst b = $input.item.json.body;\nconst fecha = DateTime.fromISO(b.start_at).setZone(b.tenant_timezone || 'America/Santiago').setLocale('es').toFormat(\"cccc dd/MM 'a las' HH:mm 'hs'\");\nreturn [{ json: { ...b, to: b.client_phone, text: `Hola ${b.client_name}, tu turno quedo agendado para el ${fecha}.\\n\\nResponde:\\n1) Confirmar\\n2) Reprogramar\\n3) Cancelar` } }];"
+      },
+      "id": "code-msg-created",
+      "name": "Code: Mensaje Reserva Creada",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, -260]
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $input.item.json.body;\nconst textos = { confirmada: 'fue confirmado', cancelada: 'fue cancelado', completada: 'fue marcado como completado', 'no-show': 'quedo registrado como no asistido' };\nconst detalle = textos[b.status] || ('cambio de estado a ' + b.status);\nreturn [{ json: { ...b, to: b.client_phone, text: `Hola ${b.client_name}, tu turno ${detalle}.` } }];"
+      },
+      "id": "code-msg-status",
+      "name": "Code: Mensaje Cambio de Estado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { DateTime } = require('luxon');\nconst b = $input.item.json.body;\nconst fecha = DateTime.fromISO(b.start_at).setZone(b.tenant_timezone || 'America/Santiago').setLocale('es').toFormat('HH:mm');\nreturn [{ json: { ...b, to: b.client_phone, text: `Hola ${b.client_name}, te recordamos tu turno mañana a las ${fecha}.\\n\\nResponde:\\n1) Confirmar\\n2) Reprogramar\\n3) Cancelar` } }];"
+      },
+      "id": "code-msg-reminder",
+      "name": "Code: Mensaje Recordatorio 24h",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_BASE_URL }}/message/sendText/{{ $json.professional_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"number\": $json.to, \"text\": $json.text } }}",
+        "options": {}
+      },
+      "id": "http-send-whatsapp",
+      "name": "HTTP: Enviar WhatsApp (Evolution API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-send-ok",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": { "type": "any", "operation": "isEmpty", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-send-ok",
+      "name": "IF: Envio OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [760, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/mark_notification_result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"p_notification_id\": $json.notification_id, \"p_success\": true, \"p_error\": null } }}",
+        "options": {}
+      },
+      "id": "http-mark-ok",
+      "name": "HTTP: Marcar Notificacion Enviada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, -100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/mark_notification_result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"p_notification_id\": $json.notification_id, \"p_success\": false, \"p_error\": ($json.error && $json.error.message) ? $json.error.message : 'error desconocido al enviar whatsapp' } }}",
+        "options": {}
+      },
+      "id": "http-mark-fail",
+      "name": "HTTP: Marcar Notificacion Fallida",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 100]
+    }
+  ],
+  "connections": {
+    "Webhook: Booking Created": {
+      "main": [[ { "node": "IF: Validar Secreto (Created)", "type": "main", "index": 0 } ]]
+    },
+    "Webhook: Booking Status Changed": {
+      "main": [[ { "node": "IF: Validar Secreto (Status Changed)", "type": "main", "index": 0 } ]]
+    },
+    "Webhook: Booking Reminder": {
+      "main": [[ { "node": "IF: Validar Secreto (Reminder)", "type": "main", "index": 0 } ]]
+    },
+    "IF: Validar Secreto (Created)": {
+      "main": [
+        [ { "node": "Code: Mensaje Reserva Creada", "type": "main", "index": 0 } ],
+        []
+      ]
+    },
+    "IF: Validar Secreto (Status Changed)": {
+      "main": [
+        [ { "node": "Code: Mensaje Cambio de Estado", "type": "main", "index": 0 } ],
+        []
+      ]
+    },
+    "IF: Validar Secreto (Reminder)": {
+      "main": [
+        [ { "node": "Code: Mensaje Recordatorio 24h", "type": "main", "index": 0 } ],
+        []
+      ]
+    },
+    "Code: Mensaje Reserva Creada": {
+      "main": [[ { "node": "HTTP: Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 } ]]
+    },
+    "Code: Mensaje Cambio de Estado": {
+      "main": [[ { "node": "HTTP: Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 } ]]
+    },
+    "Code: Mensaje Recordatorio 24h": {
+      "main": [[ { "node": "HTTP: Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 } ]]
+    },
+    "HTTP: Enviar WhatsApp (Evolution API)": {
+      "main": [[ { "node": "IF: Envio OK?", "type": "main", "index": 0 } ]]
+    },
+    "IF: Envio OK?": {
+      "main": [
+        [ { "node": "HTTP: Marcar Notificacion Enviada", "type": "main", "index": 0 } ],
+        [ { "node": "HTTP: Marcar Notificacion Fallida", "type": "main", "index": 0 } ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

@@ -1,0 +1,241 @@
+{
+  "name": "Agenda - WhatsApp Entrada",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agenda/whatsapp-inbound",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wh-inbound",
+      "name": "Webhook: WhatsApp Inbound",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, 0],
+      "webhookId": "agenda-whatsapp-inbound"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body;\nconst data = body.data || {};\nif (data.key && data.key.fromMe) { return []; }\nconst text = ((data.message && (data.message.conversation || (data.message.extendedTextMessage && data.message.extendedTextMessage.text))) || '').trim();\nif (['1', '2', '3'].indexOf(text) === -1) { return []; }\nconst remoteJid = (data.key && data.key.remoteJid) || '';\nreturn [{ json: { professional_id: body.instance, client_phone: remoteJid.split('@')[0], option: Number(text) } }];"
+      },
+      "id": "code-filter",
+      "name": "Code: Filtrar y Extraer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [40, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/handle_whatsapp_reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"p_professional_id\": $json.professional_id, \"p_client_phone\": $json.client_phone, \"p_option\": $json.option } }}",
+        "options": {}
+      },
+      "id": "http-handle-reply",
+      "name": "HTTP: handle_whatsapp_reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.item.json;\nlet resultCase = 'no_encontrado';\nif (j.ok && j.action === 'no_status_change') { resultCase = 'reprogramar'; }\nelse if (j.ok && j.action === 'status_updated' && j.booking && j.booking.status === 'confirmada') { resultCase = 'confirmado'; }\nelse if (j.ok && j.action === 'status_updated' && j.booking && j.booking.status === 'cancelada') { resultCase = 'cancelado'; }\nreturn [{ json: { ...j, resultCase } }];"
+      },
+      "id": "code-prepare-result",
+      "name": "Code: Preparar Resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "id": "r-no-encontrado",
+                    "leftValue": "={{ $json.resultCase }}",
+                    "rightValue": "no_encontrado",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "no_encontrado"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "id": "r-reprogramar",
+                    "leftValue": "={{ $json.resultCase }}",
+                    "rightValue": "reprogramar",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reprogramar"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "id": "r-confirmado",
+                    "leftValue": "={{ $json.resultCase }}",
+                    "rightValue": "confirmado",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "confirmado"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "id": "r-cancelado",
+                    "leftValue": "={{ $json.resultCase }}",
+                    "rightValue": "cancelado",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cancelado"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "none" }
+      },
+      "id": "switch-result",
+      "name": "Switch: Evaluar Resultado",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [760, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const orig = $('Code: Filtrar y Extraer').item.json;\nreturn [{ json: { professional_id: orig.professional_id, to: orig.client_phone, text: 'No encontramos una reserva activa asociada a este numero. Si necesitas ayuda, contactanos directamente.' } }];"
+      },
+      "id": "code-resp-no-encontrado",
+      "name": "Code: Respuesta No Encontrado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, -300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.item.json;\nconst link = `${$env.APP_BASE_URL}/${j.tenant_slug}/reserva/${j.booking.public_token}`;\nreturn [{ json: { professional_id: j.booking.professional_id, to: j.booking.client_phone, text: `Para elegir un nuevo horario, entra a: ${link}` } }];"
+      },
+      "id": "code-resp-reprogramar",
+      "name": "Code: Respuesta Reprogramar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.item.json;\nreturn [{ json: { professional_id: j.booking.professional_id, to: j.booking.client_phone, text: 'Listo! Tu turno quedo confirmado.' } }];"
+      },
+      "id": "code-resp-confirmado",
+      "name": "Code: Respuesta Confirmado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.item.json;\nreturn [{ json: { professional_id: j.booking.professional_id, to: j.booking.client_phone, text: 'Tu turno fue cancelado. Esperamos verte pronto!' } }];"
+      },
+      "id": "code-resp-cancelado",
+      "name": "Code: Respuesta Cancelado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_BASE_URL }}/message/sendText/{{ $json.professional_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"number\": $json.to, \"text\": $json.text } }}",
+        "options": {}
+      },
+      "id": "http-send-whatsapp",
+      "name": "HTTP: Enviar WhatsApp (Evolution API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1240, 0],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Webhook: WhatsApp Inbound": {
+      "main": [[ { "node": "Code: Filtrar y Extraer", "type": "main", "index": 0 } ]]
+    },
+    "Code: Filtrar y Extraer": {
+      "main": [[ { "node": "HTTP: handle_whatsapp_reply", "type": "main", "index": 0 } ]]
+    },
+    "HTTP: handle_whatsapp_reply": {
+      "main": [[ { "node": "Code: Preparar Resultado", "type": "main", "index": 0 } ]]
+    },
+    "Code: Preparar Resultado": {
+      "main": [[ { "node": "Switch: Evaluar Resultado", "type": "main", "index": 0 } ]]
+    },
+    "Switch: Evaluar Resultado": {
+      "main": [
+        [ { "node": "Code: Respuesta No Encontrado", "type": "main", "index": 0 } ],
+        [ { "node": "Code: Respuesta Reprogramar", "type": "main", "index": 0 } ],
+        [ { "node": "Code: Respuesta Confirmado", "type": "main", "index": 0 } ],
+        [ { "node": "Code: Respuesta Cancelado", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Code: Respuesta No Encontrado": {
+      "main": [[ { "node": "HTTP: Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 } ]]
+    },
+    "Code: Respuesta Reprogramar": {
+      "main": [[ { "node": "HTTP: Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 } ]]
+    },
+    "Code: Respuesta Confirmado": {
+      "main": [[ { "node": "HTTP: Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 } ]]
+    },
+    "Code: Respuesta Cancelado": {
+      "main": [[ { "node": "HTTP: Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 } ]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

@@ -1,0 +1,78 @@
+# Evolution API (WhatsApp) para desarrollo local.
+#
+# Se le da su propia base Postgres dedicada (no la de Supabase) para no mezclar el esquema de
+# Prisma de Evolution con las migraciones de agenda2, y para que un "supabase db reset" no borre
+# las sesiones de WhatsApp ya emparejadas. Corre en la red "bridge" default de Docker, igual que
+# los contenedores de n8n (n8nnuevo) -- por eso n8n la alcanza via host.docker.internal:8080
+# (definido como EVOLUTION_BASE_URL en el contenedor de n8n), no por nombre de servicio.
+#
+# Levantar:  docker compose -f docker/evolution-api/docker-compose.yml up -d
+# Logs:      docker compose -f docker/evolution-api/docker-compose.yml logs -f evolution-api
+# Bajar:     docker compose -f docker/evolution-api/docker-compose.yml down          (conserva los volumenes)
+
+services:
+  evolution-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: evolution
+      POSTGRES_DB: evolution
+    volumes:
+      - evolution-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution -d evolution"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  evolution-api:
+    image: atendai/evolution-api:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+    environment:
+      DOCKER_ENV: "true"
+      SERVER_URL: http://localhost:8080
+
+      # Provider valido: postgresql | mysql -- este era el que faltaba y tiraba
+      # "Error: Database provider  invalid."
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:evolution@evolution-postgres:5432/evolution?schema=public
+      DATABASE_CONNECTION_CLIENT_NAME: evolution_agenda2
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+
+      # Sin Redis para no sumar otro contenedor: cache local alcanza para desarrollo/una sola instancia.
+      CACHE_REDIS_ENABLED: "false"
+      CACHE_LOCAL_ENABLED: "true"
+
+      # Reutiliza la apikey que ya tenias en el contenedor evolution_api anterior.
+      AUTHENTICATION_API_KEY: nico
+
+      # La imagen trae un .env propio con CONFIG_SESSION_PHONE_VERSION fijo y desactualizado
+      # (2.3000.1015901307), que WhatsApp termina rechazando -- la conexion queda en loop
+      # "connecting" sin generar QR nunca. Vacio fuerza fetchLatestBaileysVersion() en vez de
+      # usar ese valor fijo.
+      CONFIG_SESSION_PHONE_VERSION: ""
+
+      # Webhook global: todas las instancias mandan sus eventos acá sin configurar nada por instancia.
+      # Apunta al workflow de entrada que ya esta activo en n8n (ver n8n/workflows/agenda-whatsapp-entrada.json).
+      WEBHOOK_GLOBAL_ENABLED: "true"
+      WEBHOOK_GLOBAL_URL: http://host.docker.internal:5678/webhook/agenda/whatsapp-inbound
+      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"
+      WEBHOOK_EVENTS_MESSAGES_UPSERT: "true"
+      WEBHOOK_EVENTS_CONNECTION_UPDATE: "true"
+      WEBHOOK_EVENTS_QRCODE_UPDATED: "true"
+    volumes:
+      - evolution-instances:/evolution/instances
+
+volumes:
+  evolution-postgres-data:
+  evolution-instances:

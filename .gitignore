@@ -34,3 +34,6 @@ supabase/.branches
 
 # Claude Code local session state
 .claude
+
+# QR de emparejamiento de WhatsApp (Evolution API) -- se regenera cada vez, no hay que versionarlo
+docker/evolution-api/*.png
