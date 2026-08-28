@@ -111,7 +111,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { DateTime } = require('luxon');\nconst b = $input.item.json.body;\nconst fecha = DateTime.fromISO(b.start_at).setZone(b.tenant_timezone || 'America/Santiago').setLocale('es').toFormat(\"cccc dd/MM 'a las' HH:mm 'hs'\");\nreturn [{ json: { ...b, to: b.client_phone, text: `Hola ${b.client_name}, tu turno quedo agendado para el ${fecha}.\\n\\nResponde:\\n1) Confirmar\\n2) Reprogramar\\n3) Cancelar` } }];"
+        "jsCode": "const b = $input.item.json.body;\nconst fecha = DateTime.fromISO(b.start_at).setZone(b.tenant_timezone || 'America/Santiago').setLocale('es').toFormat(\"cccc dd/MM 'a las' HH:mm 'hs'\");\nreturn [{ json: { ...b, to: b.client_phone, text: `Hola ${b.client_name}, tu turno quedo agendado para el ${fecha}.\\n\\nResponde:\\n1) Confirmar\\n2) Reprogramar\\n3) Cancelar` } }];"
       },
       "id": "code-msg-created",
       "name": "Code: Mensaje Reserva Creada",
@@ -131,7 +131,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { DateTime } = require('luxon');\nconst b = $input.item.json.body;\nconst fecha = DateTime.fromISO(b.start_at).setZone(b.tenant_timezone || 'America/Santiago').setLocale('es').toFormat('HH:mm');\nreturn [{ json: { ...b, to: b.client_phone, text: `Hola ${b.client_name}, te recordamos tu turno mañana a las ${fecha}.\\n\\nResponde:\\n1) Confirmar\\n2) Reprogramar\\n3) Cancelar` } }];"
+        "jsCode": "const b = $input.item.json.body;\nconst fecha = DateTime.fromISO(b.start_at).setZone(b.tenant_timezone || 'America/Santiago').setLocale('es').toFormat('HH:mm');\nreturn [{ json: { ...b, to: b.client_phone, text: `Hola ${b.client_name}, te recordamos tu turno hoy a las ${fecha} (en 2 horas).\\n\\nResponde:\\n1) Confirmar\\n2) Reprogramar\\n3) Cancelar` } }];"
       },
       "id": "code-msg-reminder",
       "name": "Code: Mensaje Recordatorio 24h",
@@ -169,9 +169,9 @@
           "conditions": [
             {
               "id": "cond-send-ok",
-              "leftValue": "={{ $json.error }}",
+              "leftValue": "={{ $json.key }}",
               "rightValue": "",
-              "operator": { "type": "any", "operation": "isEmpty", "singleValue": true }
+              "operator": { "type": "any", "operation": "exists", "singleValue": true }
             }
           ],
           "combinator": "and"
@@ -198,7 +198,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"p_notification_id\": $json.notification_id, \"p_success\": true, \"p_error\": null } }}",
+        "jsonBody": "={{ { \"p_notification_id\": (() => { try { return $('Webhook: Booking Created').item.json.body.notification_id } catch(e) { try { return $('Webhook: Booking Status Changed').item.json.body.notification_id } catch(e2) { return $('Webhook: Booking Reminder').item.json.body.notification_id } } })(), \"p_success\": true, \"p_error\": null } }}",
         "options": {}
       },
       "id": "http-mark-ok",
@@ -221,7 +221,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"p_notification_id\": $json.notification_id, \"p_success\": false, \"p_error\": ($json.error && $json.error.message) ? $json.error.message : 'error desconocido al enviar whatsapp' } }}",
+        "jsonBody": "={{ { \"p_notification_id\": (() => { try { return $('Webhook: Booking Created').item.json.body.notification_id } catch(e) { try { return $('Webhook: Booking Status Changed').item.json.body.notification_id } catch(e2) { return $('Webhook: Booking Reminder').item.json.body.notification_id } } })(), \"p_success\": false, \"p_error\": ($json.error && $json.error.message) ? $json.error.message : 'error desconocido al enviar whatsapp' } }}",
         "options": {}
       },
       "id": "http-mark-fail",

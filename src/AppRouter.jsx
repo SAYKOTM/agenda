@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
 import Home from './pages/Home';
+import Signup from './pages/Signup';
 import TenantLanding from './pages/TenantLanding';
 import BookingWizard from './pages/BookingWizard';
 import ManageBooking from './pages/ManageBooking';
@@ -26,6 +27,7 @@ export default function AppRouter() {
       <ToastProvider>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/registro" element={<Signup />} />
           <Route path="/panel/login" element={<PanelLogin />} />
           <Route path="/panel" element={<PanelLayout />}>
             <Route index element={<PanelDashboard />} />

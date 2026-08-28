@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Temporal } from '@js-temporal/polyfill';
 import { supabase } from '../../lib/supabaseClient';
 import { rescheduleBooking, ApiError } from '../../lib/api';
@@ -26,6 +26,17 @@ export default function AppointmentDrawer({ booking, tenant, onClose, onChanged 
   const [note, setNote] = useState(booking.internal_note || '');
   const [newDate, setNewDate] = useState(() => Temporal.Instant.from(booking.start_at).toZonedDateTimeISO(tenant.timezone).toPlainDate().toString());
   const [newSlot, setNewSlot] = useState(null);
+  const [notifications, setNotifications] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from('notification_queue')
+      .select('channel, status, attempts, sent_at, last_error')
+      .eq('booking_id', booking.id)
+      .then(({ data }) => { if (!cancelled) setNotifications(data || []); });
+    return () => { cancelled = true; };
+  }, [booking.id]);
 
   const zoned = Temporal.Instant.from(booking.start_at).toZonedDateTimeISO(tenant.timezone);
   const zonedEnd = Temporal.Instant.from(booking.end_at).toZonedDateTimeISO(tenant.timezone);
@@ -113,6 +124,13 @@ export default function AppointmentDrawer({ booking, tenant, onClose, onChanged 
               </div>
             </div>
 
+            {notifications?.length > 0 && (
+              <div className="flex flex-col gap-1.5 rounded-[16px] border border-[#E2E5EC] p-3.5 text-[13px]">
+                <span className="text-[11.5px] font-bold text-[#475569]">Notificaciones por correo</span>
+                {notifications.map((n) => <NotificationRow key={n.channel} n={n} />)}
+              </div>
+            )}
+
             <label className="flex flex-col gap-1.5">
               <span className="text-[11.5px] font-bold text-[#475569]">Nota interna</span>
               <textarea
@@ -154,6 +172,37 @@ export default function AppointmentDrawer({ booking, tenant, onClose, onChanged 
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const NOTIF_LABEL = { email: 'Confirmación', reminder: 'Recordatorio 2h', whatsapp: 'WhatsApp', ics: 'Calendario' };
+
+function NotificationRow({ n }) {
+  const label = NOTIF_LABEL[n.channel] || n.channel;
+  if (n.status === 'sent') {
+    return (
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[#64748B]">{label}</span>
+        <span className="font-semibold text-emerald-700">✓ Enviado {n.sent_at ? new Date(n.sent_at).toLocaleString('es-CL') : ''}</span>
+      </div>
+    );
+  }
+  if (n.status === 'failed') {
+    return (
+      <div className="flex flex-col gap-0.5">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[#64748B]">{label}</span>
+          <span className="font-semibold text-[#C0402B]">✗ Error (intento {n.attempts})</span>
+        </div>
+        {n.last_error && <span className="text-[11.5px] text-[#94A3B8]">{n.last_error}</span>}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-[#64748B]">{label}</span>
+      <span className="font-semibold text-[#94A3B8]">⏳ Pendiente</span>
     </div>
   );
 }

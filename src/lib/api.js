@@ -55,6 +55,10 @@ export function createBooking(payload) {
   return call('create-booking', { method: 'POST', body: payload });
 }
 
+export function signupTenant(payload) {
+  return call('signup-tenant', { method: 'POST', body: payload });
+}
+
 export function fetchBookingByToken(token) {
   return call('booking-by-token', { params: { token } });
 }
@@ -77,4 +81,16 @@ export function inviteProfessional(payload) {
 
 export function createCheckoutSession(payload = {}) {
   return callAuthed('create-checkout-session', { method: 'POST', body: payload });
+}
+
+export function fetchWhatsappLinkStatus() {
+  return callAuthed('whatsapp-link');
+}
+
+export function startWhatsappLink() {
+  return callAuthed('whatsapp-link', { method: 'POST' });
+}
+
+export function geocodeAddress() {
+  return callAuthed('geocode-address', { method: 'POST' });
 }

@@ -91,9 +91,16 @@ export default function BookingWizard() {
       return;
     }
     setStep('pay');
-    supabase
-      .rpc('lookup_customer_tier', { p_tenant_id: tenant.id, p_phone: form.phone.trim() })
-      .then(({ data }) => setLoyaltyPreview(data || null));
+    // El descuento se resuelve por profesional (ver 0035): si el cliente eligió "cualquiera
+    // disponible", todavía no sabemos con quién va a quedar la reserva, así que no hay nada que
+    // previsualizar acá -- el descuento real igual se aplica bien server-side en create_booking.
+    if (professionalId && professionalId !== 'any') {
+      supabase
+        .rpc('lookup_customer_tier', { p_tenant_id: tenant.id, p_professional_id: professionalId, p_phone: form.phone.trim() })
+        .then(({ data }) => setLoyaltyPreview(data || null));
+    } else {
+      setLoyaltyPreview(null);
+    }
   }
 
   async function submitBooking() {

@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
     .from('bookings')
     .select(
       'id, status, professional_id, start_at, end_at, buffer_before_min, buffer_after_min, total_price_clp, deposit_amount_clp, loyalty_discount_clp, loyalty_tier_applied, payment_method, payment_status, client_name, client_phone, client_email, notes, cancelled_at, public_token,' +
-        'tenants(name, slug, timezone, address, theme, currency),' +
+        'tenants(name, slug, timezone, address, theme, currency, google_place_id),' +
         'professionals(name, initials),' +
         'booking_items(service_id, name_snapshot, price_snapshot, duration_snapshot, sort_order),' +
         'reviews(rating, comment)'

@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
-const initialState = { loading: true, session: null, professional: null, tenant: null, error: null };
+const initialState = { loading: true, session: null, professional: null, tenant: null, error: null, needsOnboarding: false };
+const PROFESSIONAL_SELECT =
+  'id, tenant_id, name, role_title, initials, avatar_url, bio, instagram, whatsapp, role, active, email, rating_avg, rating_count, tenants(*)';
 
 // Sesión del panel: además del JWT de Supabase Auth, resuelve el registro de `professionals`
 // (y su tenant) que ese usuario representa. Todo el panel opera dentro de ese único tenant.
@@ -10,24 +12,38 @@ export function usePanelSession() {
 
   const loadProfessional = useCallback(async (session) => {
     if (!session) {
-      setState({ loading: false, session: null, professional: null, tenant: null, error: null });
+      setState({ loading: false, session: null, professional: null, tenant: null, error: null, needsOnboarding: false });
       return;
     }
-    const { data, error } = await supabase
-      .from('professionals')
-      .select('id, tenant_id, name, role_title, initials, avatar_url, bio, instagram, whatsapp, role, active, email, rating_avg, rating_count, tenants(*)')
-      .eq('auth_user_id', session.user.id)
-      .maybeSingle();
+    let { data, error } = await supabase.from('professionals').select(PROFESSIONAL_SELECT).eq('auth_user_id', session.user.id).maybeSingle();
     if (error) {
-      setState({ loading: false, session, professional: null, tenant: null, error: error.message });
+      setState({ loading: false, session, professional: null, tenant: null, error: error.message, needsOnboarding: false });
       return;
     }
-    if (!data || !data.active) {
-      setState({ loading: false, session, professional: null, tenant: null, error: 'sin_acceso' });
+    // Sin fila por auth_user_id: puede ser una invitación pendiente con el mismo email (Google
+    // como primer login) que todavía no quedó enlazada -- se intenta una vez antes de rendirse.
+    if (!data) {
+      const { data: claimed } = await supabase.rpc('claim_invited_professional');
+      if (claimed) {
+        ({ data, error } = await supabase.from('professionals').select(PROFESSIONAL_SELECT).eq('auth_user_id', session.user.id).maybeSingle());
+        if (error) {
+          setState({ loading: false, session, professional: null, tenant: null, error: error.message, needsOnboarding: false });
+          return;
+        }
+      }
+    }
+    if (!data) {
+      // Ni invitación pendiente ni panel propio: cuenta autenticada nueva (típicamente Google
+      // sin registro previo) que todavía necesita crear su salón (ver PanelOnboarding).
+      setState({ loading: false, session, professional: null, tenant: null, error: null, needsOnboarding: true });
+      return;
+    }
+    if (!data.active) {
+      setState({ loading: false, session, professional: null, tenant: null, error: 'sin_acceso', needsOnboarding: false });
       return;
     }
     const { tenants, ...professional } = data;
-    setState({ loading: false, session, professional, tenant: tenants, error: null });
+    setState({ loading: false, session, professional, tenant: tenants, error: null, needsOnboarding: false });
   }, []);
 
   useEffect(() => {

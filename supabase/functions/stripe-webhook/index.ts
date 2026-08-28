@@ -41,11 +41,14 @@ Deno.serve(async (req) => {
     case 'customer.subscription.created':
     case 'customer.subscription.updated': {
       const sub = event.data.object as any;
+      // Desde la API version 2025-03-31, Stripe movió current_period_end del objeto Subscription
+      // al primer SubscriptionItem -- soportamos ambos shapes según qué versión mande el webhook.
+      const currentPeriodEndUnix = sub.items?.data?.[0]?.current_period_end ?? sub.current_period_end;
       const patch: Record<string, unknown> = {
         stripe_subscription_id: sub.id,
         subscription_status: mapStripeStatus(sub.status),
-        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
       };
+      if (currentPeriodEndUnix) patch.current_period_end = new Date(currentPeriodEndUnix * 1000).toISOString();
       // Mientras la suscripción está en trial, Stripe manda trial_end -- lo reflejamos en
       // trial_ends_at para que la regla de acceso (tenant_has_active_access) siga viendo la
       // fecha real, incluso si Stripe la ajustó (p. ej. al calcular remainingTrialDays con

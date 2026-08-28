@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Temporal } from '@js-temporal/polyfill';
 import { fetchBookingByToken, cancelBooking, rescheduleBooking, submitReview, ApiError } from '../lib/api';
 import { money, dateLine, capitalize } from '../lib/format';
+import { googleWriteReviewUrl } from '../lib/mapLinks';
 import { useToast } from '../components/Toast';
 import ClientShell from '../components/ClientShell';
 import SlotPicker from '../components/SlotPicker';
@@ -149,6 +150,16 @@ export default function ManageBooking() {
                 <div className="text-[15px]" style={{ color: 'var(--t-accent)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</div>
                 {review.comment && <p className="text-[13px] text-[var(--t-sub)]">{review.comment}</p>}
                 <p className="text-[11.5px] text-[var(--t-sub)]">Gracias por tu reseña.</p>
+                {tenant.google_place_id && (
+                  <a
+                    href={googleWriteReviewUrl(tenant.google_place_id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="min-h-11 flex items-center justify-center rounded-[14px] border border-[var(--t-border)] text-[13px] font-semibold"
+                  >
+                    ¿Nos dejarías también tu opinión en Google?
+                  </a>
+                )}
               </>
             ) : (
               <>

@@ -160,7 +160,9 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# :5173 es el puerto real de `npm run dev` (Vite) -- se agrega para que signInWithOAuth pueda
+# volver a /panel en desarrollo; en producción hay que agregar el dominio real en el Dashboard.
+additional_redirect_urls = ["https://127.0.0.1:3000", "http://localhost:5173/panel", "http://127.0.0.1:5173/panel"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -326,6 +328,17 @@ client_id = ""
 secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
 # Overrides the default auth callback URL derived from auth.external_url.
 redirect_uri = ""
+
+# Login con Google del panel (PanelLogin.jsx). Deshabilitado hasta cargar credenciales reales:
+# creá el OAuth Client ID en Google Cloud Console (tipo "Web application", redirect URI
+# http://127.0.0.1:54321/auth/v1/callback para local) y definí las env vars antes de habilitar.
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+# Fijo a "localhost" (no 127.0.0.1, que es lo que Supabase usaría por defecto acá) porque es
+# exactamente el único redirect URI que quedó registrado en Google Cloud Console para este client.
+redirect_uri = "http://localhost:54321/auth/v1/callback"
 # Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
 # or any other third-party OIDC providers.
 url = ""
@@ -398,6 +411,11 @@ verify_jwt = false
 [functions.reschedule-booking]
 verify_jwt = false
 
+# Self-signup (fase 6): quien llama todavía no tiene cuenta, así que tampoco hay JWT que verificar.
+# La función misma crea el auth.user con el service role antes de hacer nada más.
+[functions.signup-tenant]
+verify_jwt = false
+
 # Endpoint del panel (fase 4): sí requiere el JWT del profesional que llama -- la propia función
 # además verifica que sea 'admin' de un tenant activo antes de invitar (ver invite-professional).
 [functions.invite-professional]
@@ -411,6 +429,28 @@ verify_jwt = true
 verify_jwt = true
 [functions.stripe-webhook]
 verify_jwt = false
+
+# Vinculado de WhatsApp del profesional (fase notificaciones, en pausa -- ver 0027): requiere
+# JWT, igual que invite-professional -- la función resuelve el professional_id desde
+# auth_user_id, nunca confía en un id que mande el cliente.
+[functions.whatsapp-link]
+verify_jwt = true
+
+# send-notification la llama Postgres (pg_net), no un navegador: no hay JWT de usuario que
+# verificar, la autenticación es el secreto compartido X-Webhook-Secret que la propia función
+# chequea (mismo patrón que stripe-webhook con la firma de Stripe).
+[functions.send-notification]
+verify_jwt = false
+
+# Igual que send-notification: la llama Postgres (pg_net) por el cron diario de 0032, autenticada
+# por el secreto compartido X-Webhook-Secret.
+[functions.refresh-google-ratings]
+verify_jwt = false
+
+# Ubicación en el mapa (sin Google Maps Platform): requiere JWT, igual que whatsapp-link -- la
+# función resuelve el tenant desde auth_user_id y exige rol admin.
+[functions.geocode-address]
+verify_jwt = true
 
 [analytics]
 enabled = true

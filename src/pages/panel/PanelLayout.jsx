@@ -4,6 +4,7 @@ import { usePanelSession } from '../../features/panel/usePanelSession';
 import { hasActiveAccess } from '../../lib/subscription';
 import { createCheckoutSession } from '../../lib/api';
 import { useToast } from '../../components/Toast';
+import PanelOnboarding from './PanelOnboarding';
 
 // Todo profesional ve su propio panel (Hoy/Agenda/Servicios/Disponibilidad/Perfil, fase 3).
 // Un 'admin' además ve el nivel del salón completo (Resumen/Equipo/Estaciones/Pagos/Ajustes,
@@ -28,7 +29,7 @@ const ADMIN_NAV = [
 export default function PanelLayout() {
   const location = useLocation();
   const toast = useToast();
-  const { loading, session, professional, tenant, error, signOut, refresh } = usePanelSession();
+  const { loading, session, professional, tenant, error, needsOnboarding, signOut, refresh } = usePanelSession();
   const [startingCheckout, setStartingCheckout] = useState(false);
 
   async function startCheckout() {
@@ -50,6 +51,7 @@ export default function PanelLayout() {
     );
   }
   if (!session) return <Navigate to="/panel/login" state={{ from: location.pathname }} replace />;
+  if (needsOnboarding) return <PanelOnboarding email={session.user.email} onCreated={refresh} />;
   if (error || !professional) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#F1F2F5] px-6 text-center">
