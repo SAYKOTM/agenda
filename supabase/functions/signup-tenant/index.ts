@@ -11,6 +11,7 @@
 // bloquee un reintento con el mismo email.
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+import { checkRateLimit, clientIp } from '../_shared/rateLimit.ts';
 
 const UNIQUE_VIOLATION = '23505';
 const RESERVED_SLUGS = new Set([
@@ -43,6 +44,12 @@ function validate(body: any) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return errorResponse('method_not_allowed', 405);
+
+  // 5 salones nuevos por hora por IP: de sobra para alguien probando el signup a mano, corta un
+  // script creando cuentas en masa.
+  if (!(await checkRateLimit(`signup-tenant:${clientIp(req)}`, 5, 3600))) {
+    return errorResponse('demasiadas solicitudes, intenta de nuevo más tarde', 429);
+  }
 
   let body: any;
   try {

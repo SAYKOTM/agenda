@@ -9,6 +9,7 @@ import { Temporal } from '@js-temporal/polyfill';
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { computeAvailableSlots, type WeeklyBlock, type AvailabilityException } from '../_shared/slotEngine.ts';
+import { checkRateLimit, clientIp } from '../_shared/rateLimit.ts';
 
 const EXCLUSION_VIOLATION = '23P01';
 
@@ -23,6 +24,12 @@ function validateClient(client: { name?: string; phone?: string; email?: string 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return errorResponse('method_not_allowed', 405);
+
+  // 20 reservas cada 10 min por IP: alcanza de sobra para un cliente real (incluso reintentando
+  // tras un 409 de horario ocupado) sin dejar que un script sature la agenda de un profesional.
+  if (!(await checkRateLimit(`create-booking:${clientIp(req)}`, 20, 600))) {
+    return errorResponse('demasiadas solicitudes, intenta de nuevo en unos minutos', 429);
+  }
 
   let body: any;
   try {
