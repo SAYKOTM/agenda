@@ -52,7 +52,7 @@ export function useTenantData(slug) {
           .order('sort_order'),
         supabase.from('professionals').select('id, name, role_title, initials, avatar_url, rating_avg, rating_count').eq('tenant_id', tenant.id).eq('active', true),
         supabase.from('tenant_payment_methods').select('method, gateway').eq('tenant_id', tenant.id).eq('enabled', true),
-        supabase.from('tenant_bank_accounts').select('holder, bank, account_type, account_number, rut, notice_email').eq('tenant_id', tenant.id).maybeSingle(),
+        supabase.rpc('public_bank_account', { p_tenant_id: tenant.id }).maybeSingle(),
       ]);
       if (cancelled) return;
 

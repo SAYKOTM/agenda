@@ -14,9 +14,10 @@ services:
   evolution-postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    env_file: ./.env
     environment:
       POSTGRES_USER: evolution
-      POSTGRES_PASSWORD: evolution
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD}
       POSTGRES_DB: evolution
     volumes:
       - evolution-postgres-data:/var/lib/postgresql/data
@@ -29,6 +30,7 @@ services:
   evolution-api:
     image: atendai/evolution-api:latest
     restart: unless-stopped
+    env_file: ./.env
     ports:
       - "8080:8080"
     depends_on:
@@ -41,7 +43,7 @@ services:
       # Provider valido: postgresql | mysql -- este era el que faltaba y tiraba
       # "Error: Database provider  invalid."
       DATABASE_PROVIDER: postgresql
-      DATABASE_CONNECTION_URI: postgresql://evolution:evolution@evolution-postgres:5432/evolution?schema=public
+      DATABASE_CONNECTION_URI: postgresql://evolution:${EVOLUTION_DB_PASSWORD}@evolution-postgres:5432/evolution?schema=public
       DATABASE_CONNECTION_CLIENT_NAME: evolution_agenda2
       DATABASE_SAVE_DATA_INSTANCE: "true"
       DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
@@ -53,8 +55,10 @@ services:
       CACHE_REDIS_ENABLED: "false"
       CACHE_LOCAL_ENABLED: "true"
 
-      # Reutiliza la apikey que ya tenias en el contenedor evolution_api anterior.
-      AUTHENTICATION_API_KEY: nico
+      # Definida en docker/evolution-api/.env (no versionado) -- tiene que ser el MISMO valor que
+      # EVOLUTION_API_KEY en supabase/functions/.env, que es lo que usan las Edge Functions
+      # (evolutionClient.ts) para autenticarse contra esta instancia.
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
 
       # La imagen trae un .env propio con CONFIG_SESSION_PHONE_VERSION fijo y desactualizado
       # (2.3000.1015901307), que WhatsApp termina rechazando -- la conexion queda en loop
