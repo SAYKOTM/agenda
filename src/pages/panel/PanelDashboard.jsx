@@ -2,6 +2,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import { Temporal } from '@js-temporal/polyfill';
 import { usePanelMetrics } from '../../features/panel/usePanelMetrics';
 import LoyaltyBadge from '../../components/panel/LoyaltyBadge';
+import InstallAppCard from '../../components/panel/InstallAppCard';
 import { money, hhmm, dateLine, capitalize } from '../../lib/format';
 
 const STATUS_LABEL = { pendiente: 'Pendiente', confirmada: 'Confirmada', completada: 'Completada', cancelada: 'Cancelada', 'no-show': 'No-show' };
@@ -52,6 +53,8 @@ export default function PanelDashboard() {
         <h1 className="text-[21px] font-extrabold tracking-tight text-[#0F172A]">Hoy</h1>
         <p className="mt-0.5 text-[12.5px] text-[#64748B]">{capitalize(dateLine(data.today))}</p>
       </div>
+
+      <InstallAppCard />
 
       <div className="grid grid-cols-2 gap-2.5 @[560px]:grid-cols-4">
         {kpis.map((k) => (

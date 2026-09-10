@@ -3,35 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- viewport-fit=cover: sin esto env(safe-area-inset-*) devuelve 0 y en iPhone la barra
-         inferior queda debajo de la franja de gestos. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#863BFF" />
-    <meta name="description" content="Reservá tu hora en tu barbería o salón: servicio, profesional y horario en menos de un minuto." />
+    <meta name="theme-color" content="#0F172A" />
+    <!-- El panel no debe aparecer en buscadores: es la vista interna del salón. -->
+    <meta name="robots" content="noindex, nofollow" />
 
-    <!-- PWA del cliente. iOS lee el manifest cuando CARGA la página, no cuando tocás "Añadir a
-         pantalla de inicio", por eso el panel tiene su propio documento (panel.html) en vez de
-         intercambiar este link con JavaScript. -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- MISMO bundle que index.html (misma app React, mismo router, mismos chunks). Lo único que
+         cambia es el manifest: iOS decide qué app instala según el manifest que estaba presente
+         cuando cargó ESTA página, así que el ícono agregado desde /panel abre la agenda del
+         profesional y no la portada del cliente. -->
+    <link rel="manifest" href="/panel.webmanifest" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Agenda" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Mi Agenda" />
+    <link rel="apple-touch-icon" href="/panel-apple-touch-icon.png" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <title>Agenda SaaS</title>
+    <title>Mi Agenda</title>
   </head>
   <body>
     <div id="root"></div>
     <script>
-      // Vigía de arranque. Cuando el HTML quedó cacheado apuntando a un /assets/*.js que un deploy
-      // nuevo ya borró, la app no monta nunca y la pantalla queda en blanco -- hoy la única salida
-      // sería borrar el ícono de la pantalla de inicio y volver a agregarlo. Esto lo automatiza:
-      // a los 10 segundos, si #root sigue vacío, tira toda la caché y los service workers y
-      // recarga. El candado en sessionStorage evita el bucle infinito si el problema es otro.
+      // Mismo vigía de arranque que index.html (ver el comentario allá). En la app instalada es
+      // todavía más importante: acá no hay barra de direcciones ni "recargar sin caché".
       (function () {
         setTimeout(function () {
           var root = document.getElementById('root');
@@ -40,7 +37,7 @@
             if (sessionStorage.getItem('agenda-rescate')) return;
             sessionStorage.setItem('agenda-rescate', '1');
           } catch (e) {
-            return; // modo privado sin sessionStorage: mejor no arriesgar el bucle
+            return;
           }
           var jobs = [];
           if (window.caches) jobs.push(caches.keys().then(function (k) { return Promise.all(k.map(function (n) { return caches.delete(n); })); }));

@@ -416,6 +416,11 @@ verify_jwt = false
 [functions.signup-tenant]
 verify_jwt = false
 
+# Canal ARCOP (/solicitud-datos): público, sin login -- cualquiera puede pedir ejercer sus
+# derechos sobre sus datos, tenga o no cuenta en la plataforma.
+[functions.submit-privacy-request]
+verify_jwt = false
+
 # Endpoint del panel (fase 4): sí requiere el JWT del profesional que llama -- la propia función
 # además verifica que sea 'admin' de un tenant activo antes de invitar (ver invite-professional).
 [functions.invite-professional]

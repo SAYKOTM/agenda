@@ -94,3 +94,7 @@ export function startWhatsappLink() {
 export function geocodeAddress() {
   return callAuthed('geocode-address', { method: 'POST' });
 }
+
+export function submitPrivacyRequest(payload) {
+  return call('submit-privacy-request', { method: 'POST', body: payload });
+}

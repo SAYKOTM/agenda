@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Temporal } from '@js-temporal/polyfill';
 import { supabase } from '../../lib/supabaseClient';
+import { readCache, writeCache } from '../../lib/offlineStore';
 
 function toInstant(timeZone, plainDate) {
   return plainDate.toZonedDateTime({ timeZone }).toInstant().toString();
@@ -11,12 +12,48 @@ function toInstant(timeZone, plainDate) {
 // las 6 llamadas (día/semana/mes, cada uno con su período anterior para el delta) más la
 // ocupación. El % de delta y el ticket promedio son aritmética de presentación sobre números ya
 // agregados, no una relectura de reservas.
+// Plazo antes de rendirse y mostrar la copia local: sin red las RPC no rechazan, se cuelgan
+// (ver src/lib/withTimeout.js). Importa especialmente acá porque "Hoy" es el start_url de la app
+// instalada: es la pantalla con la que arranca el profesional al abrir el ícono.
+const QUERY_TIMEOUT_MS = 6000;
+
+// Temporal.PlainDate no sobrevive a IndexedDB (no es clonable), así que en la copia local las
+// tres fechas viajan como texto ISO y se rearman al leer.
+function serialize(data) {
+  return { ...data, today: data.today.toString(), weekStart: data.weekStart.toString(), monthStart: data.monthStart.toString() };
+}
+function deserialize(cached) {
+  return {
+    ...cached,
+    today: Temporal.PlainDate.from(cached.today),
+    weekStart: Temporal.PlainDate.from(cached.weekStart),
+    monthStart: Temporal.PlainDate.from(cached.monthStart),
+  };
+}
+
 export function usePanelMetrics({ timeZone, tenantId, professionalId, scopeAll }) {
-  const [state, setState] = useState({ loading: true, error: null, data: null });
+  const [state, setState] = useState({ loading: true, error: null, data: null, stale: false });
 
   useEffect(() => {
     let cancelled = false;
-    setState({ loading: true, error: null, data: null });
+    let settled = false;
+    setState({ loading: true, error: null, data: null, stale: false });
+
+    const cacheKey = `metrics:${tenantId}:${scopeAll ? 'all' : professionalId}`;
+    const todayStr = Temporal.Now.plainDateISO(timeZone).toString();
+
+    // Sin red: se muestran las métricas guardadas, pero SOLO si son de hoy. Enseñar los ingresos
+    // de ayer bajo el título "Hoy" sería peor que decir que no hay conexión.
+    async function fallback(reason) {
+      const cached = await readCache(cacheKey);
+      if (cancelled) return;
+      if (cached?.today === todayStr) setState({ loading: false, error: null, data: deserialize(cached), stale: true });
+      else setState({ loading: false, error: reason, data: null, stale: false });
+    }
+
+    const rescue = setTimeout(() => {
+      if (!cancelled && !settled) fallback('Sin conexión: no pudimos actualizar tus métricas.');
+    }, QUERY_TIMEOUT_MS);
 
     async function load() {
       const today = Temporal.Now.plainDateISO(timeZone);
@@ -50,7 +87,7 @@ export function usePanelMetrics({ timeZone, tenantId, professionalId, scopeAll }
       const firstError = results.find((r) => r.error)?.error;
       if (cancelled) return;
       if (firstError) {
-        setState({ loading: false, error: firstError.message, data: null });
+        await fallback(firstError.message);
         return;
       }
       const byKey = Object.fromEntries(entries.map(([key], i) => [key, results[i].data]));
@@ -62,7 +99,7 @@ export function usePanelMetrics({ timeZone, tenantId, professionalId, scopeAll }
       });
       if (cancelled) return;
       if (occErr) {
-        setState({ loading: false, error: occErr.message, data: null });
+        await fallback(occErr.message);
         return;
       }
 
@@ -78,29 +115,30 @@ export function usePanelMetrics({ timeZone, tenantId, professionalId, scopeAll }
         .limit(5);
       if (cancelled) return;
       if (nextErr) {
-        setState({ loading: false, error: nextErr.message, data: null });
+        await fallback(nextErr.message);
         return;
       }
 
-      setState({
-        loading: false,
-        error: null,
-        data: {
-          today, weekStart, monthStart,
-          day: byKey.day, week: byKey.week, month: byKey.month,
-          prevDay: byKey.prevDay, prevWeek: byKey.prevWeek, prevMonth: byKey.prevMonth,
-          occupancyBookedMin: byKey.week.bookedMinutes,
-          occupancyAvailableMin: occupancyWeek,
-          nextUp: nextUp || [],
-        },
-      });
+      const data = {
+        today, weekStart, monthStart,
+        day: byKey.day, week: byKey.week, month: byKey.month,
+        prevDay: byKey.prevDay, prevWeek: byKey.prevWeek, prevMonth: byKey.prevMonth,
+        occupancyBookedMin: byKey.week.bookedMinutes,
+        occupancyAvailableMin: occupancyWeek,
+        nextUp: nextUp || [],
+      };
+      settled = true;
+      clearTimeout(rescue);
+      setState({ loading: false, error: null, data, stale: false });
+      writeCache(cacheKey, serialize(data));
     }
 
     load().catch((e) => {
-      if (!cancelled) setState({ loading: false, error: e.message, data: null });
+      if (!cancelled) fallback(e.message);
     });
     return () => {
       cancelled = true;
+      clearTimeout(rescue);
     };
   }, [timeZone, tenantId, professionalId, scopeAll]);
 

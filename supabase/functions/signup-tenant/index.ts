@@ -17,7 +17,7 @@ const UNIQUE_VIOLATION = '23505';
 const RESERVED_SLUGS = new Set([
   'registro', 'crear-salon', 'panel', 'api', 'admin', 'auth', 'login', 'logout', 'app',
   'static', 'assets', 'home', 'www', 'soporte', 'ayuda', 'terminos', 'privacidad', 'signup',
-  'dashboard', 'public', 'null', 'undefined',
+  'dashboard', 'public', 'null', 'undefined', 'solicitud-datos',
 ]);
 
 function validate(body: any) {

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0F172A" />
+    <title>Sin conexión — Agenda</title>
+    <!--
+      Página autocontenida a propósito: sin bundle, sin fuentes remotas, sin CSS externo. Si
+      dependiera de React o de Google Fonts no podría mostrarse justo en el único momento en que
+      hace falta, que es cuando no hay red.
+    -->
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        padding: 2rem 1.5rem;
+        padding-bottom: calc(2rem + env(safe-area-inset-bottom));
+        background: #0f172a;
+        color: #f7f8fa;
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        text-align: center;
+      }
+      .mark {
+        width: 64px;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 18px;
+        background: #1e293b;
+      }
+      h1 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.02em; }
+      p { margin: 0; max-width: 22rem; font-size: 14px; line-height: 1.5; color: #94a3b8; }
+      button {
+        min-height: 44px;
+        margin-top: 6px;
+        padding: 0 20px;
+        border: 0;
+        border-radius: 11px;
+        background: #863bff;
+        color: #fff;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button:active { opacity: 0.85; }
+    </style>
+  </head>
+  <body>
+    <div class="mark">
+      <svg width="30" height="29" viewBox="0 0 48 46" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path
+          fill="#a78bfa"
+          d="M23.9 44.9V31.7H9.7l7.2-12.3-1.8-3.5H.8L10.5 0h29.3l-6.6 12.3 1.8 3.6h11.9L23.9 44.9z"
+        />
+      </svg>
+    </div>
+    <h1>Sin conexión</h1>
+    <p>
+      No pudimos contactar al servidor. Si ya abriste tu agenda antes, sigue guardada en este
+      teléfono: volvé a intentar cuando recuperes señal.
+    </p>
+    <button type="button" onclick="location.reload()">Reintentar</button>
+    <script>
+      // Al volver la señal, recarga sola: evita que quede esta pantalla puesta mientras el
+      // profesional espera con el celular en la mano.
+      window.addEventListener('online', function () {
+        location.reload();
+      });
+    </script>
+  </body>
+</html>

@@ -1,7 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
+import RouteManifest from './components/RouteManifest';
 import Home from './pages/Home';
 import Signup from './pages/Signup';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import PrivacyRequest from './pages/PrivacyRequest';
 import TenantLanding from './pages/TenantLanding';
 import BookingWizard from './pages/BookingWizard';
 import ManageBooking from './pages/ManageBooking';
@@ -19,15 +22,19 @@ import PanelTeam from './pages/panel/PanelTeam';
 import PanelStations from './pages/panel/PanelStations';
 import PanelPayments from './pages/panel/PanelPayments';
 import PanelSettings from './pages/panel/PanelSettings';
+import PanelPrivacyRequests from './pages/panel/PanelPrivacyRequests';
 import RequireAdmin from './components/panel/RequireAdmin';
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <ToastProvider>
+        <RouteManifest />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/registro" element={<Signup />} />
+          <Route path="/privacidad" element={<PrivacyPolicy />} />
+          <Route path="/solicitud-datos" element={<PrivacyRequest />} />
           <Route path="/panel/login" element={<PanelLogin />} />
           <Route path="/panel" element={<PanelLayout />}>
             <Route index element={<PanelDashboard />} />
@@ -41,6 +48,7 @@ export default function AppRouter() {
               <Route path="equipo" element={<PanelTeam />} />
               <Route path="estaciones" element={<PanelStations />} />
               <Route path="pagos" element={<PanelPayments />} />
+              <Route path="privacidad" element={<PanelPrivacyRequests />} />
               <Route path="ajustes" element={<PanelSettings />} />
             </Route>
           </Route>

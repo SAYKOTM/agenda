@@ -23,6 +23,7 @@ export default function Signup() {
   const [ownerName, setOwnerName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [consent, setConsent] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -118,11 +119,28 @@ export default function Signup() {
           {fieldErrors.password && <span className={errorCls}>{fieldErrors.password}</span>}
         </label>
 
+        <label className="flex items-start gap-2.5 text-[12.5px] text-[#475569]">
+          <input
+            type="checkbox"
+            required
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            className="mt-0.5 h-4 w-4 flex-none accent-[#4F46E5]"
+          />
+          <span>
+            Acepto la{' '}
+            <Link to="/privacidad" target="_blank" className="font-semibold text-[#4F46E5]">
+              política de privacidad
+            </Link>{' '}
+            y el tratamiento de mis datos para crear y operar mi cuenta.
+          </span>
+        </label>
+
         {error && <p className={errorCls}>{error}</p>}
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !consent}
           className="min-h-12 rounded-[13px] bg-[#0F172A] text-[14px] font-bold text-white disabled:opacity-50"
         >
           {submitting ? 'Creando tu salón…' : 'Crear mi salón'}

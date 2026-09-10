@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { money } from '../../../lib/format';
 import { paymentMethodLabel } from '../../../lib/paymentLabels';
 
@@ -24,6 +26,8 @@ export default function StepPay({
   onPay,
   submitting,
 }) {
+  const [consent, setConsent] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const gateway = paymentMethods.find((m) => m.method === 'online')?.gateway;
   const discountPct = Number(loyaltyPreview?.discountPct) || 0;
   const discountAmount = discountPct > 0 ? Math.round((totalPrice * discountPct) / 100) : 0;
@@ -106,16 +110,42 @@ export default function StepPay({
             );
           })}
         </div>
+
+        <label className="flex items-start gap-2.5 text-[12px] text-[var(--t-sub)]">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            className="mt-0.5 h-4 w-4 flex-none accent-[var(--t-accent)]"
+          />
+          <span>
+            Acepto la{' '}
+            <Link to="/privacidad" target="_blank" className="font-semibold underline" style={{ color: 'var(--t-accent)' }}>
+              política de privacidad
+            </Link>{' '}
+            y el tratamiento de mis datos para gestionar esta reserva.
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2.5 text-[12px] text-[var(--t-sub)]">
+          <input
+            type="checkbox"
+            checked={ageConfirmed}
+            onChange={(e) => setAgeConfirmed(e.target.checked)}
+            className="mt-0.5 h-4 w-4 flex-none accent-[var(--t-accent)]"
+          />
+          <span>Confirmo que soy mayor de edad, o el adulto responsable de la persona que recibirá el servicio.</span>
+        </label>
       </div>
       <div className="flex-shrink-0 border-t border-[var(--t-border)] bg-[var(--t-bg)] px-4.5 pb-[calc(18px+env(safe-area-inset-bottom))] pt-3">
         <button
           type="button"
           onClick={onPay}
-          disabled={!selectedMethod || submitting}
+          disabled={!selectedMethod || !consent || !ageConfirmed || submitting}
           className="min-h-13 w-full rounded-[18px] text-[15px] font-bold disabled:cursor-not-allowed"
           style={{
-            background: selectedMethod && !submitting ? 'var(--t-accent)' : 'var(--t-border)',
-            color: selectedMethod && !submitting ? 'var(--t-accent-ink)' : 'var(--t-sub)',
+            background: selectedMethod && consent && ageConfirmed && !submitting ? 'var(--t-accent)' : 'var(--t-border)',
+            color: selectedMethod && consent && ageConfirmed && !submitting ? 'var(--t-accent-ink)' : 'var(--t-sub)',
           }}
         >
           {submitting ? 'Confirmando…' : selectedMethod === 'online' ? `Pagar ${money(finalTotal, currency)}` : 'Confirmar reserva'}

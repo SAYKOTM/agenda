@@ -1,0 +1,39 @@
+{
+  "id": "/panel",
+  "name": "Mi Agenda — panel del profesional",
+  "short_name": "Mi Agenda",
+  "description": "Tu agenda del día, tus citas y los avisos cuando te agendan, cancelan o reagendan una hora.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "/panel",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F172A",
+  "theme_color": "#0F172A",
+  "icons": [
+    { "src": "/panel-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/panel-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/panel-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Agenda de hoy",
+      "short_name": "Hoy",
+      "url": "/panel",
+      "icons": [{ "src": "/panel-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Ver la agenda completa",
+      "short_name": "Agenda",
+      "url": "/panel/agenda",
+      "icons": [{ "src": "/panel-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Bloquear horario",
+      "short_name": "Bloquear",
+      "url": "/panel/disponibilidad",
+      "icons": [{ "src": "/panel-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

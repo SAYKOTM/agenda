@@ -1,0 +1,11 @@
+-- rate_limit_hits (0038) nunca tuvo RLS habilitada: anon/authenticated tenían grant completo
+-- (select/insert/update/delete/truncate) sobre la tabla completa vía PostgREST, heredado de los
+-- default privileges del schema public. Cualquiera con la anon key podía borrar o resetear su
+-- propio contador (o truncar la tabla entera) para saltarse el rate limiting de
+-- lookup_customer_tier, create-booking, signup-tenant y submit-privacy-request -- anulando en
+-- silencio esa protección.
+--
+-- Sin policies a propósito: el único acceso legítimo es a través de enforce_rate_limit(), que es
+-- security definer y por lo tanto sigue funcionando igual aunque la tabla quede completamente
+-- cerrada a anon/authenticated vía la API pública.
+alter table rate_limit_hits enable row level security;

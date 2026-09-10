@@ -1,10 +1,10 @@
 // Punto único de envío: recibe un canal + contexto y delega en el provider registrado para ese
-// canal. Agregar WhatsApp más adelante es implementar WhatsAppProvider (NotificationProvider) y
-// registrarlo acá con providers.whatsapp -- nada en send-notification/index.ts ni en la cola de
-// Postgres necesita cambiar.
+// canal. Sumar un canal es implementar NotificationProvider y registrarlo acá -- así se agregó
+// 'push' (WebPushProvider, avisos al profesional) sin tocar la cola de Postgres, y así entraría
+// WhatsApp con providers.whatsapp.
 import type { NotificationContext, NotificationProvider, SendResult } from './types.ts';
 
-export type NotificationChannel = 'email' | 'whatsapp';
+export type NotificationChannel = 'email' | 'whatsapp' | 'push';
 
 export class NotificationService {
   constructor(private providers: Partial<Record<NotificationChannel, NotificationProvider>>) {}

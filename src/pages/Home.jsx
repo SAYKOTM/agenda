@@ -32,6 +32,14 @@ export default function Home() {
           </Link>
         ))}
       </div>
+      <div className="flex gap-3">
+        <Link to="/privacidad" className="text-[12px] font-medium text-slate-400 underline">
+          Política de privacidad
+        </Link>
+        <Link to="/solicitud-datos" className="text-[12px] font-medium text-slate-400 underline">
+          Solicitar mis datos
+        </Link>
+      </div>
     </div>
   );
 }

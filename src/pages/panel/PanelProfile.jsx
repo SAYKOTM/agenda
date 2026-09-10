@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../components/Toast';
 import { fetchWhatsappLinkStatus, startWhatsappLink } from '../../lib/api';
 import { LOYALTY_TIERS } from '../../lib/loyalty';
+import NotificationsCard from '../../components/panel/NotificationsCard';
 
 const inputCls = 'min-h-11 w-full rounded-[10px] border border-[#D3D7E0] bg-white px-3 text-[15px] text-[#0F172A]';
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
@@ -138,6 +139,8 @@ export default function PanelProfile() {
         <h1 className="text-[21px] font-extrabold tracking-tight text-[#0F172A]">Mi perfil</h1>
         <p className="mt-0.5 text-[12.5px] text-[#64748B]">Lo que ven tus clientes en el link público</p>
       </div>
+
+      <NotificationsCard />
 
       <div className="grid grid-cols-1 items-start gap-3 @[900px]:grid-cols-2">
         <div className="flex flex-col gap-3 rounded-[16px] border border-[#E2E5EC] bg-white p-4">

@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { usePanelSession } from '../../features/panel/usePanelSession';
 import { hasActiveAccess } from '../../lib/subscription';
 import { createCheckoutSession } from '../../lib/api';
 import { useToast } from '../../components/Toast';
 import PanelOnboarding from './PanelOnboarding';
+import OfflineBanner from '../../components/panel/OfflineBanner';
+import { usePushMessages, playChime } from '../../features/pwa/usePushMessages';
 
 // Todo profesional ve su propio panel (Hoy/Agenda/Servicios/Disponibilidad/Perfil, fase 3).
 // Un 'admin' además ve el nivel del salón completo (Resumen/Equipo/Estaciones/Pagos/Ajustes,
@@ -23,14 +25,28 @@ const ADMIN_NAV = [
   { to: '/panel/equipo', label: 'Equipo', icon: '◕' },
   { to: '/panel/estaciones', label: 'Estaciones', icon: '▤' },
   { to: '/panel/pagos', label: 'Pagos', icon: '$' },
+  { to: '/panel/privacidad', label: 'Privacidad', icon: '⚑' },
   { to: '/panel/ajustes', label: 'Ajustes', icon: '⚙' },
 ];
 
 export default function PanelLayout() {
   const location = useLocation();
   const toast = useToast();
-  const { loading, session, professional, tenant, error, needsOnboarding, signOut, refresh } = usePanelSession();
+  const { loading, session, professional, tenant, error, needsOnboarding, offline, signOut, refresh } = usePanelSession();
   const [startingCheckout, setStartingCheckout] = useState(false);
+
+  // Aviso llegado mientras el panel está abierto y a la vista: el service worker no muestra la
+  // notificación del sistema en ese caso y manda el dato acá (ver public/sw.js). Va antes de
+  // cualquier return temprano porque es un hook.
+  usePushMessages(
+    useCallback(
+      (payload) => {
+        toast(payload.body || payload.title || 'Novedad en tu agenda');
+        playChime();
+      },
+      [toast]
+    )
+  );
 
   async function startCheckout() {
     setStartingCheckout(true);
@@ -100,55 +116,114 @@ export default function PanelLayout() {
     );
   }
 
+  const navItems = professional.role === 'admin' ? [...PRO_NAV, ...ADMIN_NAV] : PRO_NAV;
+
   return (
-    <div className="@container min-h-screen bg-[#F1F2F5]">
-      <div className="flex min-h-screen flex-col @[768px]:flex-row">
-        <aside className="sticky top-0 z-20 flex flex-none items-center gap-2.5 overflow-x-auto bg-[#0F172A] px-3 py-2 text-[#F7F8FA] @[768px]:h-screen @[768px]:w-[222px] @[768px]:flex-col @[768px]:items-stretch @[768px]:gap-4 @[768px]:overflow-visible @[768px]:px-3 @[768px]:py-4">
-          <div className="flex flex-none items-center gap-2 px-0.5 @[768px]:gap-2.5">
-            <div className="flex h-6.5 w-6.5 flex-none items-center justify-center rounded-lg bg-[#4F46E5] text-[11px] font-extrabold text-white @[768px]:h-7.5 @[768px]:w-7.5 @[768px]:rounded-[9px] @[768px]:text-[13px]">
+    <>
+      <div className="@container min-h-screen bg-[#F1F2F5]">
+        <div className="flex min-h-screen flex-col md:flex-row">
+          {/* Escritorio (el computador del mesón): barra lateral completa. */}
+          <aside className="sticky top-0 hidden h-screen w-[222px] flex-none flex-col gap-4 bg-[#0F172A] px-3 py-4 text-[#F7F8FA] md:flex">
+            <div className="flex flex-none items-center gap-2.5 px-0.5">
+              <div className="flex h-7.5 w-7.5 flex-none items-center justify-center rounded-[9px] bg-[#4F46E5] text-[13px] font-extrabold text-white">
+                {tenant.mark}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-[13px] font-bold tracking-tight">{tenant.name}</div>
+                <div className="truncate font-mono text-[9.5px] text-[#8493A8]">/{tenant.slug}</div>
+              </div>
+            </div>
+
+            <nav className="flex min-w-0 flex-1 flex-col gap-0.5">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    'flex w-full items-center gap-2 whitespace-nowrap rounded-[10px] px-2.5 py-2 text-[12.5px] font-semibold ' +
+                    (isActive ? 'bg-[#1E293B] text-white' : 'text-[#94A3B8]')
+                  }
+                >
+                  <span aria-hidden="true">{item.icon}</span>
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+
+            <div className="mt-auto flex items-center gap-2.5 rounded-xl bg-[#1E293B] p-2.5">
+              <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#334155] text-[11px] font-bold">{professional.initials}</div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-xs font-semibold">{professional.name}</div>
+                <div className="text-[10px] text-[#94A3B8]">{professional.role === 'admin' ? 'Administrador' : 'Profesional'}</div>
+              </div>
+              <button type="button" onClick={signOut} aria-label="Cerrar sesión" className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-[13px] text-[#94A3B8] hover:text-white">
+                ⏻
+              </button>
+            </div>
+          </aside>
+
+          {/* Móvil (el celular en el sillón): cabecera mínima arriba, navegación abajo al alcance
+              del pulgar. El padding superior respeta la franja de estado, que en la app instalada
+              queda encima del contenido por apple-mobile-web-app-status-bar-style. */}
+          <header
+            className="sticky top-0 z-20 flex flex-none items-center gap-2.5 bg-[#0F172A] px-3.5 pb-2 text-[#F7F8FA] md:hidden"
+            style={{ paddingTop: 'calc(0.5rem + env(safe-area-inset-top))' }}
+          >
+            <div className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-[#4F46E5] text-[12px] font-extrabold text-white">
               {tenant.mark}
             </div>
-            <div className="hidden min-w-0 @[768px]:block">
-              <div className="truncate text-[13px] font-bold tracking-tight">{tenant.name}</div>
-              <div className="truncate font-mono text-[9.5px] text-[#8493A8]">/{tenant.slug}</div>
-            </div>
-          </div>
-
-          <nav className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto @[768px]:flex-col @[768px]:gap-0.5 @[768px]:overflow-visible" style={{ scrollbarWidth: 'none' }}>
-            {(professional.role === 'admin' ? [...PRO_NAV, ...ADMIN_NAV] : PRO_NAV).map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  'flex flex-none items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-2 text-[12.5px] font-semibold @[768px]:w-full @[768px]:rounded-[10px] @[768px]:px-2.5 @[768px]:py-2 ' +
-                  (isActive ? 'bg-[#1E293B] text-white' : 'text-[#94A3B8]')
-                }
-              >
-                <span aria-hidden="true">{item.icon}</span>
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="mt-auto hidden items-center gap-2.5 rounded-xl bg-[#1E293B] p-2.5 @[768px]:flex">
-            <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#334155] text-[11px] font-bold">{professional.initials}</div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-semibold">{professional.name}</div>
-              <div className="text-[10px] text-[#94A3B8]">{professional.role === 'admin' ? 'Administrador' : 'Profesional'}</div>
+              <div className="truncate text-[13px] font-bold tracking-tight">{tenant.name}</div>
+              <div className="truncate text-[10px] text-[#94A3B8]">{professional.name}</div>
             </div>
-            <button type="button" onClick={signOut} aria-label="Cerrar sesión" className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-[13px] text-[#94A3B8] hover:text-white">
+            <button
+              type="button"
+              onClick={signOut}
+              aria-label="Cerrar sesión"
+              className="flex h-11 w-11 flex-none items-center justify-center rounded-xl text-[15px] text-[#94A3B8]"
+            >
               ⏻
             </button>
-          </div>
-        </aside>
+          </header>
 
-        <main className="min-w-0 flex-1 px-3.5 py-3 @[768px]:px-5.5 @[768px]:py-4.5">
-          <div className="mx-auto w-full max-w-[1440px]">
-            <Outlet context={{ professional, tenant, signOut, refresh }} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <OfflineBanner forced={offline} />
+            <main className="min-w-0 flex-1 px-3.5 py-3 md:px-5.5 md:py-4.5">
+              <div className="mx-auto w-full max-w-[1440px]">
+                <Outlet context={{ professional, tenant, signOut, refresh }} />
+              </div>
+              {/* Espacio para que la última tarjeta no quede tapada por la barra inferior. */}
+              <div className="md:hidden" style={{ height: 'calc(4.75rem + env(safe-area-inset-bottom))' }} aria-hidden="true" />
+            </main>
           </div>
-        </main>
+        </div>
       </div>
-    </div>
+
+      {/* Fuera del contenedor @container a propósito: container-type crea un bloque contenedor y
+          un `fixed` adentro se anclaría al alto de la página en vez de al del viewport, con lo
+          que la barra se iría con el scroll. */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 flex gap-1 overflow-x-auto border-t border-[#1E293B] bg-[#0F172A] px-2 pt-1.5 md:hidden"
+        style={{ paddingBottom: 'calc(0.375rem + env(safe-area-inset-bottom))', scrollbarWidth: 'none' }}
+      >
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              'flex min-h-11 min-w-16 flex-none flex-col items-center justify-center gap-0.5 rounded-[12px] px-2 py-1 text-[10px] font-semibold ' +
+              (isActive ? 'bg-[#1E293B] text-white' : 'text-[#94A3B8]')
+            }
+          >
+            <span aria-hidden="true" className="text-[15px] leading-none">
+              {item.icon}
+            </span>
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
+    </>
   );
 }

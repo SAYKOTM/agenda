@@ -1,6 +1,10 @@
-// Contrato compartido por cualquier canal de notificación (hoy solo email; WhatsApp puede sumarse
-// después implementando NotificationProvider sin tocar send-notification/index.ts ni la cola).
-export type NotificationType = 'confirmation' | 'reminder';
+// Contrato compartido por cualquier canal de notificación (email al cliente y push al profesional;
+// WhatsApp puede sumarse después implementando NotificationProvider sin tocar
+// send-notification/index.ts ni la cola).
+//
+// 'professional_alert' es el aviso que recibe el trabajador en su teléfono cuando le tocan la
+// agenda; los otros dos son los correos al cliente.
+export type NotificationType = 'confirmation' | 'reminder' | 'professional_alert';
 
 export interface NotificationContext {
   type: NotificationType;
@@ -17,6 +21,12 @@ export interface NotificationContext {
   startAt: string; // ISO, UTC
   status: string; // booking_status crudo (pendiente | confirmada | completada | cancelada | no-show)
   manageUrl: string;
+
+  // Solo los usa el canal push (aviso al profesional): qué pasó con la cita, cuál es y a dónde
+  // llevar al tocar la notificación.
+  event?: 'created' | 'cancelled' | 'rescheduled';
+  bookingId?: string;
+  panelUrl?: string;
 }
 
 export interface SendResult {
