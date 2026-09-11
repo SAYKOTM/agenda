@@ -3,6 +3,7 @@ import { useTenantData } from '../features/tenant/useTenantData';
 import { money, durLabel } from '../lib/format';
 import { professionalBookingPath } from '../lib/publicLinks';
 import ClientShell from '../components/ClientShell';
+import LocationCard from '../components/LocationCard';
 import PhotoCarousel from '../components/PhotoCarousel';
 
 // Perfil público de UN profesional: lo que ve el cliente cuando abre el link que ese profesional
@@ -85,6 +86,8 @@ export default function ProfessionalPublic() {
             @{String(pro.instagram).replace(/^@/, '')} en Instagram
           </a>
         )}
+
+        <LocationCard tenant={tenant} />
 
         {services.length > 0 && (
           <div>

@@ -3,9 +3,9 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useTenantData } from '../features/tenant/useTenantData';
 import { supabase } from '../lib/supabaseClient';
 import { money, durLabel } from '../lib/format';
-import { wazeUrl, googleMapsUrl, appleMapsUrl, googleWriteReviewUrl, googleMapsEmbedUrl } from '../lib/mapLinks';
+import { googleWriteReviewUrl } from '../lib/mapLinks';
 import ClientShell from '../components/ClientShell';
-import LocationMap from '../components/LocationMap';
+import LocationCard from '../components/LocationCard';
 
 export default function TenantLanding() {
   const { slug } = useParams();
@@ -67,10 +67,7 @@ export default function TenantLanding() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2.5 overflow-hidden rounded-[18px] border border-[var(--t-border)]">
-          <LocationBlock tenant={tenant} />
-          {tenant.hours_label && <InfoRow label="Horario" value={tenant.hours_label} />}
-        </div>
+        <LocationCard tenant={tenant} />
 
         {topServices.length > 0 && (
           <div>
@@ -147,55 +144,6 @@ function GalleryBlock({ gallery }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function LocationBlock({ tenant }) {
-  const { address, google_place_id: placeId, lat, lng, theme } = tenant;
-  if (!address) return null;
-  // Prioriza el embed de Google si hay API key configurada (la mayoría no la va a tener, por el
-  // requisito de tarjeta en Google Cloud); si no, cae al mapa propio (Leaflet + CARTO, gratis).
-  const googleEmbedUrl = googleMapsEmbedUrl(placeId);
-
-  return (
-    <div className="flex flex-col gap-2.5 bg-[var(--t-panel)] px-3.5 py-3.5 text-[13px]">
-      <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--t-sub)]">Ubicación</span>
-      {googleEmbedUrl ? (
-        <iframe
-          title="Ubicación en el mapa"
-          src={googleEmbedUrl}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          className="h-40 w-full rounded-[12px] border-0"
-        />
-      ) : lat != null && lng != null ? (
-        <div className="h-40 w-full overflow-hidden rounded-[12px]">
-          <LocationMap lat={lat} lng={lng} accent={theme?.accent || '#0F172A'} bg={theme?.bg || '#FFFFFF'} />
-        </div>
-      ) : (
-        <span>{address}</span>
-      )}
-      <div className="flex gap-2">
-        <a href={googleMapsUrl(address, placeId)} target="_blank" rel="noreferrer" className="flex-1 rounded-[10px] border border-[var(--t-border)] py-2 text-center text-[12px] font-semibold">
-          Google Maps
-        </a>
-        <a href={wazeUrl(address)} target="_blank" rel="noreferrer" className="flex-1 rounded-[10px] border border-[var(--t-border)] py-2 text-center text-[12px] font-semibold">
-          Waze
-        </a>
-        <a href={appleMapsUrl(address)} target="_blank" rel="noreferrer" className="flex-1 rounded-[10px] border border-[var(--t-border)] py-2 text-center text-[12px] font-semibold">
-          Apple Maps
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value }) {
-  return (
-    <div className="flex gap-3 bg-[var(--t-panel)] px-3.5 py-3.5 text-[13px]">
-      <span className="w-16.5 flex-none pt-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--t-sub)]">{label}</span>
-      <span className="flex-1">{value}</span>
     </div>
   );
 }

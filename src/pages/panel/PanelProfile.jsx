@@ -13,6 +13,7 @@ import { professionalPublicUrl, tenantBookingUrl, whatsappShareUrl } from '../..
 const inputCls = 'min-h-11 w-full rounded-[10px] border border-[#D3D7E0] bg-white px-3 text-[15px] text-[#0F172A]';
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const MAX_GALLERY_BYTES = 3 * 1024 * 1024;
+const MAX_LOCAL_PHOTO_BYTES = 3 * 1024 * 1024;
 const MAX_GALLERY_PHOTOS = 12;
 const TIER_ORDER = ['bronce', 'plata', 'oro', 'diamante'];
 
@@ -105,6 +106,43 @@ export default function PanelProfile() {
     const next = [...gallery];
     [next[index], next[target]] = [next[target], next[index]];
     saveGallery(next);
+  }
+
+  const [uploadingLocal, setUploadingLocal] = useState(false);
+  const localPhotos = tenant.gallery_urls || [];
+  const mainLocalPhoto = localPhotos[0] || null;
+
+  // Foto principal del local: es la portada de la portada -- lo primero que ve quien abre el link
+  // del salón. La galería completa se administra en Ajustes; acá está solo la principal porque es
+  // la que más se cambia y porque este es el lugar donde el admin viene a mirar cómo lo ven sus
+  // clientes. Escribir tenants (y el bucket tenant-gallery) es admin-only por RLS
+  // (0010_admin_role_guards.sql), por eso la tarjeta ni se muestra a un profesional.
+  async function uploadLocalPhoto(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast('La foto tiene que ser una imagen'); return; }
+    if (file.size > MAX_LOCAL_PHOTO_BYTES) { toast('La foto no puede pesar más de 3 MB'); return; }
+
+    setUploadingLocal(true);
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const path = `${tenant.id}/${crypto.randomUUID()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from('tenant-gallery').upload(path, file, { cacheControl: '3600' });
+    if (upErr) { setUploadingLocal(false); toast('No pudimos subir la foto del local'); return; }
+    const url = supabase.storage.from('tenant-gallery').getPublicUrl(path).data.publicUrl;
+    // Va al principio del array: la anterior no se pierde, baja a ser una foto más de la galería.
+    const { error: updErr } = await supabase.from('tenants').update({ gallery_urls: [url, ...localPhotos] }).eq('id', tenant.id);
+    setUploadingLocal(false);
+    if (updErr) { toast('Subimos la foto pero no pudimos guardarla'); return; }
+    toast('Foto principal actualizada');
+    refresh();
+  }
+
+  async function removeMainLocalPhoto() {
+    const { error } = await supabase.from('tenants').update({ gallery_urls: localPhotos.slice(1) }).eq('id', tenant.id);
+    if (error) { toast('No pudimos quitar la foto'); return; }
+    toast(localPhotos.length > 1 ? 'Ahora la portada es la siguiente foto' : 'Foto principal quitada');
+    refresh();
   }
 
   const [tiers, setTiers] = useState(null); // null = cargando
@@ -320,6 +358,40 @@ export default function PanelProfile() {
         </p>
         <ThemePicker tenant={tenant} refresh={refresh} canEdit={isAdmin} />
       </div>
+
+      {isAdmin && (
+        <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-4">
+          <div className="mb-1 text-[13.5px] font-bold">Foto principal del local</div>
+          <p className="mb-3 max-w-[520px] text-[12px] text-[#64748B]">
+            Es la portada del link del salón: lo primero que ve el cliente al abrirlo. El resto de las fotos del local se
+            administran en Ajustes.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            {mainLocalPhoto ? (
+              <img src={mainLocalPhoto} alt="Foto principal del local" className="h-28 w-44 flex-none rounded-[12px] border border-[#E2E5EC] object-cover" />
+            ) : (
+              <div
+                className="flex h-28 w-44 flex-none items-center justify-center rounded-[12px] border border-dashed border-[#D3D7E0] font-mono text-[10px] text-[#94A3B8]"
+                style={{ backgroundImage: 'repeating-linear-gradient(115deg, rgba(100,116,139,.14) 0 2px, transparent 2px 11px)' }}
+              >
+                sin foto del local
+              </div>
+            )}
+            <div className="flex flex-col gap-1.5">
+              <label className="w-fit cursor-pointer rounded-[9px] border border-[#E2E5EC] px-3 py-2 text-[12px] font-semibold text-[#0F172A]">
+                {uploadingLocal ? 'Subiendo…' : mainLocalPhoto ? 'Cambiar foto principal' : 'Subir foto principal'}
+                <input type="file" accept="image/*" onChange={uploadLocalPhoto} disabled={uploadingLocal} className="hidden" />
+              </label>
+              {mainLocalPhoto && (
+                <button type="button" onClick={removeMainLocalPhoto} className="w-fit rounded-[9px] px-1 text-[11.5px] font-semibold text-[#A33421] underline">
+                  Quitar esta foto
+                </button>
+              )}
+              <span className="text-[11px] text-[#94A3B8]">JPG o PNG, hasta 3 MB. Horizontal se ve mejor.</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-4">
         <div className="flex flex-wrap items-center gap-2">
