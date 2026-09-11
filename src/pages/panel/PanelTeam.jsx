@@ -6,6 +6,7 @@ import { useToast } from '../../components/Toast';
 import InviteProfessionalModal from '../../components/panel/InviteProfessionalModal';
 import EditProfessionalModal from '../../components/panel/EditProfessionalModal';
 import { money } from '../../lib/format';
+import { removeProfessional, ApiError } from '../../lib/api';
 import { copyText } from '../../lib/clipboard';
 import { professionalPublicUrl } from '../../lib/publicLinks';
 
@@ -16,12 +17,29 @@ export default function PanelTeam() {
   const { loading, error, team, ranking, reload } = usePanelTeamManage(tenant.id, tenant.timezone, canSeeFinancials);
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
 
   const statsByPro = Object.fromEntries(ranking.map((r) => [r.professional_id, r]));
 
   async function copyProLink(pro) {
     const url = professionalPublicUrl(tenant.slug, pro);
     toast((await copyText(url)) ? `Link de ${pro.name.split(' ')[0]} copiado` : 'No pudimos copiar el link');
+  }
+
+  // Borrar es de dos pasos a propósito: solo se puede eliminar a quien ya está dado de baja. El
+  // backend lo exige igual (remove-professional), esto es la misma regla en la pantalla.
+  async function remove(p) {
+    if (!confirm(`¿Eliminar la cuenta de ${p.name}? Esto no se puede deshacer.`)) return;
+    setRemovingId(p.id);
+    try {
+      await removeProfessional({ professionalId: p.id });
+      toast(`${p.name.split(' ')[0]} ya no es parte del equipo`);
+      reload();
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : 'No pudimos eliminar la cuenta');
+    } finally {
+      setRemovingId(null);
+    }
   }
 
   async function toggleActive(p) {
@@ -79,26 +97,49 @@ export default function PanelTeam() {
                   </div>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  {/* El link propio de cada profesional: el admin es quien arma los flyers y los
-                      estados de WhatsApp del salón, así que necesita poder copiar el de cualquiera
-                      sin pedírselo. */}
-                  <button
-                    type="button"
-                    onClick={() => copyProLink(p)}
-                    className="min-h-9 flex-1 rounded-[9px] border border-[#E2E5EC] px-2.5 text-[12px] font-semibold @[700px]:flex-none"
-                  >
-                    Copiar link
-                  </button>
-                  <button type="button" onClick={() => setEditing(p)} className="min-h-9 flex-1 rounded-[9px] border border-[#E2E5EC] px-2.5 text-[12px] font-semibold @[700px]:flex-none">Permisos</button>
-                  <button
-                    type="button"
-                    onClick={() => toggleActive(p)}
-                    disabled={p.id === me.id}
-                    title={p.id === me.id ? 'No puedes suspender tu propia cuenta' : undefined}
-                    className="min-h-9 flex-1 rounded-[9px] border border-[#E2E5EC] px-2.5 text-[12px] font-semibold disabled:opacity-40 @[700px]:flex-none"
-                  >
-                    {p.active ? 'Baja' : 'Reactivar'}
-                  </button>
+                  {p.active ? (
+                    <>
+                      {/* El link propio de cada profesional: el admin es quien arma los flyers y
+                          los estados de WhatsApp del salón, así que necesita poder copiar el de
+                          cualquiera sin pedírselo. Un profesional dado de baja no aparece en el
+                          link público, así que ahí no tiene sentido ofrecerlo. */}
+                      <button
+                        type="button"
+                        onClick={() => copyProLink(p)}
+                        className="min-h-9 flex-1 rounded-[9px] border border-[#E2E5EC] px-2.5 text-[12px] font-semibold @[700px]:flex-none"
+                      >
+                        Copiar link
+                      </button>
+                      <button type="button" onClick={() => setEditing(p)} className="min-h-9 flex-1 rounded-[9px] border border-[#E2E5EC] px-2.5 text-[12px] font-semibold @[700px]:flex-none">Permisos</button>
+                      <button
+                        type="button"
+                        onClick={() => toggleActive(p)}
+                        disabled={p.id === me.id}
+                        title={p.id === me.id ? 'No puedes suspender tu propia cuenta' : undefined}
+                        className="min-h-9 flex-1 rounded-[9px] border border-[#E2E5EC] px-2.5 text-[12px] font-semibold disabled:opacity-40 @[700px]:flex-none"
+                      >
+                        Baja
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => toggleActive(p)}
+                        className="min-h-9 flex-1 rounded-[9px] border border-[#E2E5EC] px-2.5 text-[12px] font-semibold @[700px]:flex-none"
+                      >
+                        Reactivar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => remove(p)}
+                        disabled={removingId === p.id}
+                        className="min-h-9 flex-1 rounded-[9px] border border-[#E4C9C4] px-2.5 text-[12px] font-semibold text-[#A33421] disabled:opacity-40 @[700px]:flex-none"
+                      >
+                        {removingId === p.id ? 'Eliminando…' : 'Eliminar'}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

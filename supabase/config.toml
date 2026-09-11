@@ -426,6 +426,10 @@ verify_jwt = false
 [functions.invite-professional]
 verify_jwt = true
 
+# Igual que invite-professional: JWT del profesional y validación de 'admin' por dentro.
+[functions.remove-professional]
+verify_jwt = true
+
 # Suscripciones SaaS (Stripe). create-checkout-session es igual a invite-professional: requiere
 # JWT del profesional y valida 'admin' por dentro. stripe-webhook es lo opuesto: lo llama Stripe
 # directamente sin JWT de Supabase, así que verify_jwt debe ir en false -- la única verificación
