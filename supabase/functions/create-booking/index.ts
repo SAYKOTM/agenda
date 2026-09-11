@@ -13,11 +13,19 @@ import { checkRateLimit, clientIp } from '../_shared/rateLimit.ts';
 
 const EXCLUSION_VIOLATION = '23P01';
 
-function validateClient(client: { name?: string; phone?: string; email?: string }) {
+// Versión del texto de política que el formulario le muestra al cliente. Debe coincidir con
+// LAST_UPDATED de src/pages/PrivacyPolicy.jsx: es lo que después permite acreditar qué aceptó cada
+// persona, no solo que aceptó (ver la migración 0047).
+const CONSENT_VERSION = 'privacidad-2026-09-02';
+
+function validateClient(client: { name?: string; phone?: string; email?: string; consent?: unknown }) {
   const errors: Record<string, string> = {};
   if (!client.name || !client.name.trim()) errors.name = 'Necesitamos tu nombre para la reserva.';
   if (!client.phone || !/^[0-9+\s()-]{8,}$/.test(client.phone.trim())) errors.phone = 'Ingresa un teléfono válido.';
   if (!client.email || !/^\S+@\S+\.\S+$/.test(client.email.trim())) errors.email = 'Ingresa un email válido.';
+  // Se valida también acá y no solo en el navegador: el checkbox del formulario es la interfaz,
+  // pero esta función es la que de verdad crea la reserva y cualquiera puede llamarla directo.
+  if (client.consent !== true) errors.consent = 'Necesitamos que aceptes la política de privacidad.';
   return errors;
 }
 
@@ -165,6 +173,16 @@ Deno.serve(async (req) => {
     });
 
     if (!rpcErr) {
+      // Evidencia del consentimiento. Va después del alta y no dentro de create_booking() para no
+      // tocar la firma de esa función, que es el corazón del anti-doble-reserva. Si este update
+      // fallara, la reserva igual es válida -- se registra el error y se sigue, porque dejar a una
+      // persona sin su hora por un problema de auditoría sería el peor de los dos resultados.
+      const { error: consentErr } = await db
+        .from('bookings')
+        .update({ consent_accepted_at: new Date().toISOString(), consent_version: CONSENT_VERSION })
+        .eq('id', booking.id);
+      if (consentErr) console.error(`[CONSENT] no se pudo registrar booking=${booking.id}: ${consentErr.message}`);
+
       return jsonResponse(
         {
           booking: {

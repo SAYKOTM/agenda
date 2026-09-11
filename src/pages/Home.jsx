@@ -32,9 +32,12 @@ export default function Home() {
           </Link>
         ))}
       </div>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5">
         <Link to="/privacidad" className="text-[12px] font-medium text-slate-400 underline">
           Política de privacidad
+        </Link>
+        <Link to="/terminos" className="text-[12px] font-medium text-slate-400 underline">
+          Términos del servicio
         </Link>
         <Link to="/solicitud-datos" className="text-[12px] font-medium text-slate-400 underline">
           Solicitar mis datos

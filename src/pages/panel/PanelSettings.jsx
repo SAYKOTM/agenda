@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../components/Toast';
 import { geocodeAddress, ApiError } from '../../lib/api';
 import { TENANT_THEMES, themeMatchesPreset } from '../../lib/tenantThemes';
+import { usePanelExport } from '../../features/panel/usePanelExport';
 
 const inputCls = 'min-h-11 w-full rounded-[10px] border border-[#D3D7E0] bg-white px-3 text-[14px] text-[#0F172A]';
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
@@ -16,6 +17,12 @@ export default function PanelSettings() {
   const [geocoding, setGeocoding] = useState(false);
   const [savingTheme, setSavingTheme] = useState(null); // id del preset que se está guardando
   const [uploadingGallery, setUploadingGallery] = useState(false);
+  const { exporting, error: exportError, exportCustomers, exportBookings, exportServices } = usePanelExport({ tenant });
+
+  async function runExport(fn) {
+    const count = await fn();
+    if (count !== null) toast(count ? `Listo: ${count} ${count === 1 ? 'fila exportada' : 'filas exportadas'}` : 'No hay datos para exportar todavía');
+  }
 
   async function uploadGalleryPhotos(e) {
     const files = Array.from(e.target.files || []);
@@ -284,6 +291,25 @@ export default function PanelSettings() {
       </div>
 
       <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-4">
+        <div className="mb-1 text-[13.5px] font-bold">Tus datos</div>
+        <p className="mb-3 max-w-[560px] text-[12px] leading-snug text-[#64748B]">
+          Descargá tus clientes, tu historial de citas y tu catálogo en CSV cuando quieras. Los datos son del salón: sirven para
+          llevar tu contabilidad aparte, para migrar a otro sistema y para responder si un cliente te pide una copia de su
+          información. Se abren directo en Excel o en Google Sheets.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <ExportButton label="Clientes" busy={exporting === 'clientes'} disabled={!!exporting} onClick={() => runExport(exportCustomers)} />
+          <ExportButton label="Reservas" busy={exporting === 'reservas'} disabled={!!exporting} onClick={() => runExport(exportBookings)} />
+          <ExportButton label="Servicios" busy={exporting === 'servicios'} disabled={!!exporting} onClick={() => runExport(exportServices)} />
+        </div>
+        {exportError && <p className="mt-2 text-[12px] text-[#A33421]">{exportError}</p>}
+        <p className="mt-2.5 text-[11.5px] text-[#94A3B8]">
+          El archivo de reservas incluye nombre, teléfono y email de cada cliente: guardalo donde corresponda y no lo compartas
+          por canales abiertos.
+        </p>
+      </div>
+
+      <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-4">
         <div className="mb-1 flex items-center justify-between">
           <div>
             <div className="text-[13.5px] font-bold">Fidelización</div>
@@ -353,5 +379,19 @@ function Field({ label, children }) {
       <span className="text-[11.5px] font-bold text-[#475569]">{label}</span>
       {children}
     </label>
+  );
+}
+
+function ExportButton({ label, busy, disabled, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex min-h-11 items-center gap-2 rounded-[11px] border border-[#D3D7E0] bg-white px-3.5 text-[13px] font-semibold text-[#0F172A] disabled:opacity-50"
+    >
+      <span aria-hidden="true" className="text-[#64748B]">↓</span>
+      {busy ? 'Generando…' : label}
+    </button>
   );
 }

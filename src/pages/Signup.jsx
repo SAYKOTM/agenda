@@ -128,11 +128,15 @@ export default function Signup() {
             className="mt-0.5 h-4 w-4 flex-none accent-[#4F46E5]"
           />
           <span>
-            Acepto la{' '}
+            Acepto los{' '}
+            <Link to="/terminos" target="_blank" className="font-semibold text-[#4F46E5]">
+              términos del servicio
+            </Link>{' '}
+            —incluido el anexo de tratamiento de datos— y la{' '}
             <Link to="/privacidad" target="_blank" className="font-semibold text-[#4F46E5]">
               política de privacidad
-            </Link>{' '}
-            y el tratamiento de mis datos para crear y operar mi cuenta.
+            </Link>
+            .
           </span>
         </label>
 

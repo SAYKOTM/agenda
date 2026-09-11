@@ -143,7 +143,17 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        <Section title="11. Contacto">
+        <Section title="11. Términos del servicio">
+          <p>
+            Si administras un negocio en la plataforma, la relación contractual se rige además por los{' '}
+            <Link to="/terminos" className="font-semibold text-[#4F46E5] underline">
+              términos del servicio
+            </Link>
+            , cuyo Anexo A detalla cómo Agenda SaaS trata los datos de tus clientes por cuenta tuya.
+          </p>
+        </Section>
+
+        <Section title="12. Contacto">
           <p>
             Para consultas sobre esta política o para ejercer tus derechos, escríbenos a <strong>{CONTACT_EMAIL}</strong>.
           </p>

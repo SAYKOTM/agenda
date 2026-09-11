@@ -30,7 +30,7 @@ export default function BookingWizard() {
   const [selectedServiceIds, setSelectedServiceIds] = useState([]);
   const [date, setDate] = useState(null);
   const [slot, setSlot] = useState(null);
-  const [form, setForm] = useState({ name: '', phone: '', email: '', notes: '' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', notes: '', consent: false });
   const [touched, setTouched] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [submitting, setSubmitting] = useState(false);

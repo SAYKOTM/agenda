@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { formatPhoneInput } from '../../../lib/format';
 
 const PHONE_ALLOWED_CHARS = /^[0-9+\s()-]*$/;
@@ -8,6 +9,9 @@ export function validateClientForm(form) {
   if (!form.name.trim()) errors.name = 'Necesitamos tu nombre para la reserva.';
   if (!/^[0-9+\s()-]{8,}$/.test(form.phone.trim())) errors.phone = 'Ingresa un teléfono válido (solo números).';
   if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) errors.email = 'Ingresa un email válido.';
+  // Ley 21.719: el titular de estos datos es el cliente que reserva, no el salón. Sin su
+  // aceptación no se crea la reserva -- create-booking lo vuelve a exigir del lado del servidor.
+  if (!form.consent) errors.consent = 'Necesitamos que aceptes la política de privacidad para reservar.';
   return errors;
 }
 
@@ -58,6 +62,30 @@ export default function StepForm({ form, onChange, errors, stepIndex, stepCount,
             className="min-h-21 w-full resize-y rounded-[14px] border border-[#D3D7E0] bg-white px-3.5 py-3 text-[16px] text-slate-900 @[520px]:text-[14px]"
           />
         </Field>
+
+        <label className="flex items-start gap-2.5 text-[12.5px] leading-snug text-[var(--t-sub)]">
+          <input
+            type="checkbox"
+            checked={!!form.consent}
+            onChange={(e) => onChange({ ...form, consent: e.target.checked })}
+            className="mt-0.5 h-4.5 w-4.5 flex-none rounded"
+            style={{ accentColor: 'var(--t-accent)' }}
+            aria-describedby={errors.consent ? 'consent-error' : undefined}
+          />
+          <span>
+            Acepto que el salón use mis datos para gestionar esta reserva y enviarme la
+            confirmación y el recordatorio, según la{' '}
+            <Link to="/privacidad" target="_blank" rel="noreferrer" className="font-semibold underline" style={{ color: 'var(--t-accent)' }}>
+              política de privacidad
+            </Link>
+            .
+          </span>
+        </label>
+        {errors.consent && (
+          <span id="consent-error" role="alert" className="-mt-1.5 text-[11.5px] text-[#C0402B]">
+            {errors.consent}
+          </span>
+        )}
       </div>
       <div className="flex-shrink-0 border-t border-[var(--t-border)] bg-[var(--t-bg)] px-4.5 pb-[calc(18px+env(safe-area-inset-bottom))] pt-3">
         <button type="button" onClick={onNext} className="min-h-13 w-full rounded-[18px] text-[15px] font-bold" style={{ background: 'var(--t-accent)', color: 'var(--t-accent-ink)' }}>

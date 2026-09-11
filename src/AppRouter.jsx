@@ -4,6 +4,7 @@ import RouteManifest from './components/RouteManifest';
 import Home from './pages/Home';
 import Signup from './pages/Signup';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import Terms from './pages/Terms';
 import PrivacyRequest from './pages/PrivacyRequest';
 import TenantLanding from './pages/TenantLanding';
 import BookingWizard from './pages/BookingWizard';
@@ -34,6 +35,7 @@ export default function AppRouter() {
           <Route path="/" element={<Home />} />
           <Route path="/registro" element={<Signup />} />
           <Route path="/privacidad" element={<PrivacyPolicy />} />
+          <Route path="/terminos" element={<Terms />} />
           <Route path="/solicitud-datos" element={<PrivacyRequest />} />
           <Route path="/panel/login" element={<PanelLogin />} />
           <Route path="/panel" element={<PanelLayout />}>
