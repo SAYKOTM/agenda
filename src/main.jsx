@@ -2,6 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import AppRouter from './AppRouter.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+import { installErrorReporting } from './lib/reportError'
 
 // La app montó bien: se suelta el candado del vigía de arranque de index.html / panel.html para
 // que un problema futuro pueda volver a dispararlo. En try/catch porque en modo privado de Safari
@@ -11,6 +13,11 @@ try {
 } catch {
   // sin sessionStorage no hay candado que soltar
 }
+
+// Errores que no atrapa ningún try/catch (window.onerror y promesas sin catch) van a la tabla
+// client_errors vía la Edge Function report-error. Se instala antes de montar React para no
+// perderse un fallo del propio arranque.
+installErrorReporting()
 
 // Después de un deploy, los chunks que la pestaña abierta todavía no cargó dejan de existir en el
 // servidor y el import dinámico falla dejando la vista en blanco. Recargar trae el index nuevo.
@@ -31,6 +38,8 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AppRouter />
+    <ErrorBoundary>
+      <AppRouter />
+    </ErrorBoundary>
   </StrictMode>,
 )

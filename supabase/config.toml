@@ -452,6 +452,16 @@ verify_jwt = false
 [functions.refresh-google-ratings]
 verify_jwt = false
 
+# Buzón de errores del navegador (0048): tiene que aceptar reportes de la página pública de
+# reservas, donde no hay sesión. Se defiende con límite por IP dentro de la propia función.
+[functions.report-error]
+verify_jwt = false
+
+# Alarma de operación: la llama Postgres (pg_net) desde check_system_health(), autenticada por el
+# mismo X-Webhook-Secret que send-notification.
+[functions.ops-alert]
+verify_jwt = false
+
 # Ubicación en el mapa (sin Google Maps Platform): requiere JWT, igual que whatsapp-link -- la
 # función resuelve el tenant desde auth_user_id y exige rol admin.
 [functions.geocode-address]

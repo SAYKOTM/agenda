@@ -38,3 +38,7 @@ supabase/.branches
 # QR de emparejamiento de WhatsApp (Evolution API) -- se regenera cada vez, no hay que versionarlo
 docker/evolution-api/*.png
 docker/evolution-api/.env
+
+# Respaldos lógicos de la base (scripts/backup.mjs): contienen datos personales de clientes,
+# nunca deben versionarse.
+backups/
