@@ -6,6 +6,7 @@ import { fetchWhatsappLinkStatus, startWhatsappLink } from '../../lib/api';
 import { LOYALTY_TIERS } from '../../lib/loyalty';
 import NotificationsCard from '../../components/panel/NotificationsCard';
 import PhotoCarousel from '../../components/PhotoCarousel';
+import ThemePicker from '../../components/panel/ThemePicker';
 import { copyText } from '../../lib/clipboard';
 import { professionalPublicUrl, tenantBookingUrl, whatsappShareUrl } from '../../lib/publicLinks';
 
@@ -52,6 +53,7 @@ export default function PanelProfile() {
 
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const gallery = professional.gallery_urls || [];
+  const isAdmin = professional.role === 'admin';
 
   // Galería de trabajos: es lo que el cliente ve como carrusel en el perfil público. El orden
   // del array ES el orden del carrusel y la primera foto es la portada, así que reordenar es
@@ -307,6 +309,16 @@ export default function PanelProfile() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-4">
+        <div className="mb-1 text-[13.5px] font-bold">Apariencia de tu link público</div>
+        <p className="mb-3 max-w-[520px] text-[12px] text-[#64748B]">
+          {isAdmin
+            ? 'Los colores que ven tus clientes al abrir tu link. Elegí la paleta que más se acerque a tu estilo: se aplica a todo el salón.'
+            : 'Los colores que ven tus clientes al abrir tu link. La paleta la define el administrador del salón desde Ajustes.'}
+        </p>
+        <ThemePicker tenant={tenant} refresh={refresh} canEdit={isAdmin} />
       </div>
 
       <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-4">

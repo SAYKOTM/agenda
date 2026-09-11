@@ -26,6 +26,10 @@ export default function ModalPortal({ onClose, align = 'center', z = 70, childre
     };
   }, [onClose]);
 
+  // El padding superior es el hueco de la barra de estado del iPhone (hora, wifi, señal), que en
+  // la app instalada queda ENCIMA de la página (apple-mobile-web-app-status-bar-style:
+  // black-translucent). Va en el fondo del modal y no adentro del panel para que el contenido no
+  // solo arranque más abajo, sino que tampoco pueda pasar por debajo de la hora al scrollear.
   return createPortal(
     <div
       role="dialog"
@@ -35,7 +39,7 @@ export default function ModalPortal({ onClose, align = 'center', z = 70, childre
         'fixed inset-0 flex bg-[rgba(15,23,42,.4)] ' +
         (align === 'end' ? 'justify-end ' : 'items-center justify-center p-0 min-[520px]:p-5 ')
       }
-      style={{ zIndex: z }}
+      style={{ zIndex: z, paddingTop: 'env(safe-area-inset-top)' }}
     >
       {children}
     </div>,

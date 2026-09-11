@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../components/Toast';
 import { geocodeAddress, ApiError } from '../../lib/api';
-import { TENANT_THEMES, themeMatchesPreset } from '../../lib/tenantThemes';
+import ThemePicker from '../../components/panel/ThemePicker';
 import { usePanelExport } from '../../features/panel/usePanelExport';
 
 const inputCls = 'min-h-11 w-full rounded-[10px] border border-[#D3D7E0] bg-white px-3 text-[14px] text-[#0F172A]';
@@ -15,7 +15,6 @@ export default function PanelSettings() {
   const toast = useToast();
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
-  const [savingTheme, setSavingTheme] = useState(null); // id del preset que se está guardando
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const { exporting, error: exportError, exportCustomers, exportBookings, exportServices } = usePanelExport({ tenant });
 
@@ -59,15 +58,6 @@ export default function PanelSettings() {
     const { error } = await supabase.from('tenants').update({ gallery_urls: next }).eq('id', tenant.id);
     if (error) toast('No pudimos quitar la foto');
     else refresh();
-  }
-
-  async function applyTheme(preset) {
-    setSavingTheme(preset.id);
-    const { error } = await supabase.from('tenants').update({ theme: preset.colors }).eq('id', tenant.id);
-    setSavingTheme(null);
-    if (error) { toast('No pudimos aplicar la paleta'); return; }
-    toast(`Paleta "${preset.label}" aplicada`);
-    refresh();
   }
 
   async function locateOnMap() {
@@ -286,8 +276,7 @@ export default function PanelSettings() {
       <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-4">
         <div className="mb-1 text-[13.5px] font-bold">Apariencia</div>
         <p className="mb-3 max-w-[520px] text-[12px] text-[#64748B]">Los colores de tu link público (el que ven tus clientes al reservar). Elegí la paleta que más se acerque a tu estilo.</p>
-        <ThemeGroup title="Barbería" themes={TENANT_THEMES.filter((t) => t.group === 'barberia')} tenant={tenant} savingTheme={savingTheme} onPick={applyTheme} />
-        <ThemeGroup title="Salón de belleza" themes={TENANT_THEMES.filter((t) => t.group === 'salon')} tenant={tenant} savingTheme={savingTheme} onPick={applyTheme} />
+        <ThemePicker tenant={tenant} refresh={refresh} />
       </div>
 
       <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-4">
@@ -322,40 +311,6 @@ export default function PanelSettings() {
         </div>
       </div>
     </div>
-  );
-}
-
-function ThemeGroup({ title, themes, tenant, savingTheme, onPick }) {
-  return (
-    <div className="mb-3 last:mb-0">
-      <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-[#94A3B8]">{title}</div>
-      <div className="flex flex-wrap gap-2.5">
-        {themes.map((t) => (
-          <ThemeSwatch key={t.id} theme={t} active={themeMatchesPreset(tenant.theme, t)} saving={savingTheme === t.id} onPick={() => onPick(t)} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ThemeSwatch({ theme, active, saving, onPick }) {
-  const { bg, panel, accent, ink } = theme.colors;
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      disabled={saving}
-      aria-pressed={active}
-      className={'flex w-28 flex-col items-start gap-2 rounded-[13px] border-2 p-2.5 text-left disabled:opacity-60 ' + (active ? 'border-[#0F172A]' : 'border-[#E2E5EC]')}
-    >
-      <div className="flex h-11 w-full overflow-hidden rounded-[8px]" style={{ background: bg }}>
-        <div className="h-full w-1/2" style={{ background: panel }} />
-        <div className="flex h-full w-1/2 items-center justify-center" style={{ background: accent }}>
-          <span className="h-3 w-3 rounded-full" style={{ background: ink }} />
-        </div>
-      </div>
-      <span className="text-[11.5px] font-semibold text-[#0F172A]">{active ? `✓ ${theme.label}` : theme.label}</span>
-    </button>
   );
 }
 

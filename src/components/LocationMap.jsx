@@ -55,7 +55,17 @@ export default function LocationMap({ lat, lng, accent, bg }) {
     });
     L.marker([lat, lng], { icon, interactive: false }).addTo(map);
 
-    return () => map.remove();
+    // Leaflet calcula el tamaño del mapa UNA vez, al crearlo, y no se entera si el contenedor
+    // cambia después: basta con que aparezca la barra de scroll de la página (por una foto que
+    // terminó de cargar más abajo) para que el mapa quede con tiles grises o corridos. El
+    // observer lo vuelve a medir cada vez que el contenedor cambia de tamaño.
+    const resize = new ResizeObserver(() => map.invalidateSize());
+    resize.observe(elRef.current);
+
+    return () => {
+      resize.disconnect();
+      map.remove();
+    };
   }, [lat, lng, accent, bg]);
 
   return <div ref={elRef} className="h-40 w-full" />;

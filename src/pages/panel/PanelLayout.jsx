@@ -194,7 +194,7 @@ export default function PanelLayout() {
                 <Outlet context={{ professional, tenant, signOut, refresh }} />
               </div>
               {/* Espacio para que la última tarjeta no quede tapada por la barra inferior. */}
-              <div className="md:hidden" style={{ height: 'calc(4.75rem + env(safe-area-inset-bottom))' }} aria-hidden="true" />
+              <div className="md:hidden" style={{ height: 'calc(5.75rem + env(safe-area-inset-bottom))' }} aria-hidden="true" />
             </main>
           </div>
         </div>
@@ -204,8 +204,8 @@ export default function PanelLayout() {
           un `fixed` adentro se anclaría al alto de la página en vez de al del viewport, con lo
           que la barra se iría con el scroll. */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex gap-1 overflow-x-auto border-t border-[#1E293B] bg-[#0F172A] px-2 pt-1.5 md:hidden"
-        style={{ paddingBottom: 'calc(0.375rem + env(safe-area-inset-bottom))', scrollbarWidth: 'none' }}
+        className="fixed inset-x-0 bottom-0 z-30 flex gap-1 overflow-x-auto border-t border-[#1E293B] bg-[#0F172A] px-2 pt-2 md:hidden"
+        style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom))', scrollbarWidth: 'none' }}
       >
         {navItems.map((item) => (
           <NavLink
@@ -213,11 +213,11 @@ export default function PanelLayout() {
             to={item.to}
             end={item.end}
             className={({ isActive }) =>
-              'flex min-h-11 min-w-16 flex-none flex-col items-center justify-center gap-0.5 rounded-[12px] px-2 py-1 text-[10px] font-semibold ' +
+              'flex min-h-14 min-w-18 flex-none flex-col items-center justify-center gap-1 rounded-[13px] px-2.5 py-1.5 text-[11.5px] font-semibold ' +
               (isActive ? 'bg-[#1E293B] text-white' : 'text-[#94A3B8]')
             }
           >
-            <span aria-hidden="true" className="text-[15px] leading-none">
+            <span aria-hidden="true" className="text-[20px] leading-none">
               {item.icon}
             </span>
             {item.label}
