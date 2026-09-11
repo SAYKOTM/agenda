@@ -1,18 +1,24 @@
 import { Temporal } from '@js-temporal/polyfill';
 import { money, durLabel, capitalize, dateLine } from '../../../lib/format';
 import { paymentMethodLabel } from '../../../lib/paymentLabels';
-import { useToast } from '../../../components/Toast';
+import { buildIcs, downloadIcs, googleCalendarUrl } from '../../../lib/calendarLinks';
 
 export default function StepDone({ booking, items, proLabel, tenant, form, currency, gateway, onManage, onBackHome }) {
-  const toast = useToast();
   const zoned = Temporal.Instant.from(booking.startAt).toZonedDateTimeISO(tenant.timezone);
   const whenLine = `${capitalize(dateLine(zoned.toPlainDate()))} · ${String(zoned.hour).padStart(2, '0')}:${String(zoned.minute).padStart(2, '0')} h`;
   const code = booking.id.slice(0, 8).toUpperCase();
   const totalDurationMin = items.reduce((a, s) => a + s.duration_min, 0);
 
-  function onIcs() {
-    toast('La descarga de .ics y la integración con calendarios estará disponible próximamente.');
-  }
+  const serviceNames = items.map((s) => s.name).join(' + ');
+  const calendarEvent = {
+    uid: `${booking.id}@agenda`,
+    title: `${serviceNames} · ${tenant.name}`,
+    details: `Reserva ${code} con ${proLabel}.\nDuración: ${durLabel(totalDurationMin)}.`,
+    location: tenant.address || tenant.name,
+    startAt: booking.startAt,
+    // endAt lo devuelve create-booking; si faltara, se calcula con la duración de los servicios.
+    endAt: booking.endAt || Temporal.Instant.from(booking.startAt).add({ minutes: totalDurationMin }).toString(),
+  };
 
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth flex flex-col gap-4 px-4.5 py-5 [animation:fadeUp_.3s_ease]">
@@ -52,11 +58,20 @@ export default function StepDone({ booking, items, proLabel, tenant, form, curre
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <button type="button" onClick={onIcs} className="min-h-12 rounded-[15px] border border-[var(--t-ink)] text-[13px] font-semibold text-[var(--t-ink)]">
+        <a
+          href={googleCalendarUrl(calendarEvent)}
+          target="_blank"
+          rel="noreferrer"
+          className="flex min-h-12 items-center justify-center rounded-[15px] border border-[var(--t-ink)] text-[13px] font-semibold text-[var(--t-ink)]"
+        >
           Google Calendar
-        </button>
-        <button type="button" onClick={onIcs} className="min-h-12 rounded-[15px] border border-[var(--t-ink)] text-[13px] font-semibold text-[var(--t-ink)]">
-          Descargar .ics
+        </a>
+        <button
+          type="button"
+          onClick={() => downloadIcs(buildIcs(calendarEvent), `reserva-${code}.ics`)}
+          className="flex min-h-12 items-center justify-center rounded-[15px] border border-[var(--t-ink)] text-[13px] font-semibold text-[var(--t-ink)]"
+        >
+          Apple Calendar
         </button>
       </div>
       <button
