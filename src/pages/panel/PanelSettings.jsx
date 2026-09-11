@@ -120,12 +120,31 @@ export default function PanelSettings() {
       google_reviews_count: draft.google_reviews_count === '' ? null : Number(draft.google_reviews_count),
     };
     const { error } = await supabase.from('tenants').update(payload).eq('id', tenant.id);
-    setSaving(false);
-    if (error) toast('No pudimos guardar los cambios');
-    else {
-      toast('Cambios guardados');
-      refresh();
+    if (error) {
+      setSaving(false);
+      toast('No pudimos guardar los cambios');
+      return;
     }
+
+    // El mapa de la vista pública sale de tenants.lat/lng, y esas no se llenan solas: hasta ahora
+    // dependían de que el admin descubriera el botón "Ubicar en el mapa", así que el link público
+    // quedaba mostrando la dirección sin mapa. Al guardar se geocodifica solo, si la dirección
+    // cambió o si nunca se ubicó. Si Nominatim falla, el guardado igual valió y queda el botón.
+    const address = draft.address.trim();
+    const addressChanged = address !== (tenant.address || '').trim();
+    if (address && (addressChanged || tenant.lat == null)) {
+      try {
+        await geocodeAddress();
+      } catch {
+        toast('Guardamos los cambios, pero no pudimos ubicar la dirección en el mapa');
+        setSaving(false);
+        refresh();
+        return;
+      }
+    }
+    setSaving(false);
+    toast('Cambios guardados');
+    refresh();
   }
 
   async function saveLoyalty(next) {
@@ -188,7 +207,10 @@ export default function PanelSettings() {
               {geocoding ? 'Ubicando…' : tenant.lat != null ? 'Volver a ubicar' : 'Ubicar en el mapa'}
             </button>
           </div>
-          <p className="-mt-1.5 text-[11px] text-[#94A3B8]">Guardá la dirección primero y después apretá el botón: así aparece el mapa en tu link público.</p>
+          <p className="-mt-1.5 text-[11px] text-[#94A3B8]">
+            El mapa del link público sale de acá. Al guardar los cambios se ubica sola; el botón es para reintentarlo o
+            corregirla si quedó mal puesta.
+          </p>
 
           <Field label="Google Place ID (opcional)">
             <input value={draft.google_place_id} onChange={(e) => setDraft((d) => ({ ...d, google_place_id: e.target.value }))} className={inputCls} placeholder="ChIJ…" />

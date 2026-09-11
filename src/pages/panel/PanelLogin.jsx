@@ -9,6 +9,7 @@ export default function PanelLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -25,14 +26,43 @@ export default function PanelLogin() {
 
   async function onGoogleLogin() {
     setError('');
+    setGoogleBusy(true);
     // El destino final (aceptar la sesión, enlazar una invitación pendiente o pedir crear un
     // salón nuevo) lo resuelve PanelLayout/usePanelSession al volver a /panel -- acá solo se
-    // dispara el redirect a Google.
-    const { error } = await supabase.auth.signInWithOAuth({
+    // arma el redirect a Google.
+    const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/panel` },
+      options: { redirectTo: `${window.location.origin}/panel`, skipBrowserRedirect: true },
     });
-    if (error) setError('No pudimos iniciar el login con Google.');
+    if (oauthError || !data?.url) {
+      setGoogleBusy(false);
+      setError('No pudimos iniciar el login con Google.');
+      return;
+    }
+
+    // Chequeo previo antes de sacar a la persona de la app: si el proveedor no está habilitado en
+    // el proyecto de Supabase, o el redirect no está en la lista blanca, /auth/v1/authorize
+    // responde 400 con un JSON. Sin esto el navegador igual navega hasta ahí y el usuario queda
+    // mirando `{"code":400,...,"msg":"Unsupported provider..."}` en una pantalla en blanco, sin
+    // botón de volver y sin ninguna pista de qué hacer. El endpoint manda cabeceras CORS, así que
+    // el error se puede leer desde acá; si el chequeo no se puede hacer (sin red, CORS), se sigue
+    // de largo y el flujo queda como antes.
+    try {
+      const res = await fetch(data.url, { redirect: 'manual' });
+      if (res.type !== 'opaqueredirect' && !res.ok) {
+        const detail = await res.json().catch(() => null);
+        setGoogleBusy(false);
+        setError(
+          detail?.msg?.includes('provider is not enabled')
+            ? 'El login con Google no está habilitado en este servidor todavía. Ingresá con tu email y contraseña.'
+            : 'No pudimos iniciar el login con Google. Ingresá con tu email y contraseña.'
+        );
+        return;
+      }
+    } catch {
+      // el chequeo es opcional: si falla, se intenta el login igual
+    }
+    window.location.assign(data.url);
   }
 
   return (
@@ -84,7 +114,8 @@ export default function PanelLogin() {
         <button
           type="button"
           onClick={onGoogleLogin}
-          className="flex min-h-12 items-center justify-center gap-2.5 rounded-[13px] border border-[#D3D7E0] bg-white text-[14px] font-bold text-[#0F172A]"
+          disabled={googleBusy}
+          className="flex min-h-12 items-center justify-center gap-2.5 rounded-[13px] border border-[#D3D7E0] bg-white text-[14px] font-bold text-[#0F172A] disabled:opacity-50"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
             <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" />
@@ -92,7 +123,7 @@ export default function PanelLogin() {
             <path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.05l3.01-2.33z" />
             <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 00.96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
           </svg>
-          Continuar con Google
+          {googleBusy ? 'Abriendo Google…' : 'Continuar con Google'}
         </button>
 
         <p className="text-center text-[12.5px] text-[#64748B]">
