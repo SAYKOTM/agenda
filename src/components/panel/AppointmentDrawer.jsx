@@ -20,7 +20,7 @@ const STATUS_CLASS = {
 // Panel lateral de detalle de cita (392px en desktop, pantalla completa en móvil vía la propia
 // posición fixed + inset-0). Reusa SlotPicker y la Edge Function reschedule-booking -- el mismo
 // mecanismo que usa el cliente en /reserva/:token -- para "Reagendar" desde el panel.
-export default function AppointmentDrawer({ booking, tenant, onClose, onChanged }) {
+export default function AppointmentDrawer({ booking, tenant, team = [], onClose, onChanged }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
@@ -28,6 +28,7 @@ export default function AppointmentDrawer({ booking, tenant, onClose, onChanged 
   const [newDate, setNewDate] = useState(() => Temporal.Instant.from(booking.start_at).toZonedDateTimeISO(tenant.timezone).toPlainDate().toString());
   const [newSlot, setNewSlot] = useState(null);
   const [notifications, setNotifications] = useState(null);
+  const [history, setHistory] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +37,15 @@ export default function AppointmentDrawer({ booking, tenant, onClose, onChanged 
       .select('channel, status, attempts, sent_at, last_error')
       .eq('booking_id', booking.id)
       .then(({ data }) => { if (!cancelled) setNotifications(data || []); });
+    // booking_status_history venía registrando cada cambio de estado desde el primer día, pero no
+    // se mostraba en ninguna pantalla. Es la respuesta cuando el cliente dice "yo cancelé el
+    // martes" y el salón dice que no: acá está quién lo cambió y a qué hora.
+    supabase
+      .from('booking_status_history')
+      .select('id, from_status, to_status, changed_by, changed_at, note')
+      .eq('booking_id', booking.id)
+      .order('changed_at', { ascending: true })
+      .then(({ data }) => { if (!cancelled) setHistory(data || []); });
     return () => { cancelled = true; };
   }, [booking.id]);
 
@@ -132,6 +142,13 @@ export default function AppointmentDrawer({ booking, tenant, onClose, onChanged 
               </div>
             )}
 
+            {history?.length > 0 && (
+              <div className="flex flex-col gap-2 rounded-[16px] border border-[#E2E5EC] p-3.5 text-[13px]">
+                <span className="text-[11.5px] font-bold text-[#475569]">Historial de la cita</span>
+                {history.map((h) => <HistoryRow key={h.id} h={h} timeZone={tenant.timezone} team={team} />)}
+              </div>
+            )}
+
             <label className="flex flex-col gap-1.5">
               <span className="text-[11.5px] font-bold text-[#475569]">Nota interna</span>
               <textarea
@@ -178,6 +195,31 @@ export default function AppointmentDrawer({ booking, tenant, onClose, onChanged 
 }
 
 const NOTIF_LABEL = { email: 'Confirmación', reminder: 'Recordatorio 2h', whatsapp: 'WhatsApp', ics: 'Calendario' };
+
+// 'changed_by' guarda 'client', 'system' o el id del profesional que tocó el botón: el id crudo no
+// le dice nada a nadie, así que se traduce al nombre cuando se puede.
+function actorLabel(changedBy, team) {
+  if (changedBy === 'client') return 'el cliente';
+  if (changedBy === 'client_whatsapp') return 'el cliente por WhatsApp';
+  if (changedBy === 'system') return 'el sistema';
+  return team.find((p) => p.id === changedBy)?.name || 'el salón';
+}
+
+function HistoryRow({ h, timeZone, team }) {
+  const when = Temporal.Instant.from(h.changed_at).toZonedDateTimeISO(timeZone);
+  const stamp = `${capitalize(dateLine(when.toPlainDate()))} · ${hhmm(when.hour * 60 + when.minute)}`;
+  return (
+    <div className="flex flex-col gap-0.5 border-l-2 border-[#E2E5EC] pl-2.5">
+      <span className="text-[12.5px] text-[#0F172A]">
+        {h.from_status ? <>De <b className="font-semibold">{STATUS_LABEL[h.from_status]}</b> a </> : 'Creada como '}
+        <b className="font-semibold">{STATUS_LABEL[h.to_status] || h.to_status}</b>
+        <span className="text-[#64748B]"> · por {actorLabel(h.changed_by, team)}</span>
+      </span>
+      <span className="text-[11px] text-[#94A3B8]">{stamp}</span>
+      {h.note && <span className="text-[11.5px] text-[#64748B]">{h.note}</span>}
+    </div>
+  );
+}
 
 function NotificationRow({ n }) {
   const label = NOTIF_LABEL[n.channel] || n.channel;

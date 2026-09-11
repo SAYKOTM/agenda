@@ -156,7 +156,7 @@ export default function PanelAgenda() {
         />
       )}
 
-      {openBooking && <AppointmentDrawer booking={openBooking} tenant={tenant} onClose={closeDrawer} onChanged={reload} />}
+      {openBooking && <AppointmentDrawer booking={openBooking} tenant={tenant} team={team} onClose={closeDrawer} onChanged={reload} />}
     </div>
   );
 }

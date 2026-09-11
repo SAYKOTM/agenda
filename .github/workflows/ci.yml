@@ -1,0 +1,40 @@
+# Cada push a main sale a producción por la integración de Git de Vercel, así que estas tres
+# verificaciones son la única red antes de que un error llegue a un salón trabajando. Corren
+# también en los pull requests, para poder ver el resultado antes de mezclar.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # npm ci respeta package-lock.json al pie de la letra: instala exactamente las versiones
+      # con las que se probó, no "la última que cumpla el rango".
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      # Las claves son de ejemplo: el build solo las incrusta como texto y nunca se conecta a
+      # nada. Van igual porque src/lib/supabaseClient.js exige que existan, y lo que se quiere
+      # verificar acá es que el proyecto compile.
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://ejemplo.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-anon-key-de-ejemplo

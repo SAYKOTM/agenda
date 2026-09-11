@@ -42,3 +42,7 @@ docker/evolution-api/.env
 # Respaldos lógicos de la base (scripts/backup.mjs): contienen datos personales de clientes,
 # nunca deben versionarse.
 backups/
+
+# CLI de Stripe: 37 MB de binario que se descargan de stripe.com, no se versionan. Cada clon del
+# repo se lo llevaba y ensuciaba los diffs.
+stripe.exe
