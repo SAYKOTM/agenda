@@ -5,9 +5,14 @@ import { useToast } from '../../components/Toast';
 import { fetchWhatsappLinkStatus, startWhatsappLink } from '../../lib/api';
 import { LOYALTY_TIERS } from '../../lib/loyalty';
 import NotificationsCard from '../../components/panel/NotificationsCard';
+import PhotoCarousel from '../../components/PhotoCarousel';
+import { copyText } from '../../lib/clipboard';
+import { professionalPublicUrl, tenantBookingUrl, whatsappShareUrl } from '../../lib/publicLinks';
 
 const inputCls = 'min-h-11 w-full rounded-[10px] border border-[#D3D7E0] bg-white px-3 text-[15px] text-[#0F172A]';
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const MAX_GALLERY_BYTES = 3 * 1024 * 1024;
+const MAX_GALLERY_PHOTOS = 12;
 const TIER_ORDER = ['bronce', 'plata', 'oro', 'diamante'];
 
 export default function PanelProfile() {
@@ -43,6 +48,61 @@ export default function PanelProfile() {
     if (updErr) { toast('Subimos la foto pero no pudimos guardarla en tu perfil'); return; }
     toast('Foto actualizada');
     refresh();
+  }
+
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const gallery = professional.gallery_urls || [];
+
+  // Galería de trabajos: es lo que el cliente ve como carrusel en el perfil público. El orden
+  // del array ES el orden del carrusel y la primera foto es la portada, así que reordenar es
+  // simplemente mover posiciones del array y volver a guardarlo.
+  async function saveGallery(next, okMessage) {
+    const { error } = await supabase.from('professionals').update({ gallery_urls: next }).eq('id', professional.id);
+    if (error) { toast('No pudimos guardar la galería'); return false; }
+    if (okMessage) toast(okMessage);
+    refresh();
+    return true;
+  }
+
+  async function uploadGalleryPhotos(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    const room = MAX_GALLERY_PHOTOS - gallery.length;
+    if (room <= 0) { toast(`Ya tenés el máximo de ${MAX_GALLERY_PHOTOS} fotos`); return; }
+    const toUpload = files.slice(0, room);
+    if (files.length > room) toast(`Solo se suben ${room}: el máximo son ${MAX_GALLERY_PHOTOS} fotos`);
+
+    setUploadingGallery(true);
+    const newUrls = [];
+    let rejected = 0;
+    for (const file of toUpload) {
+      if (!file.type.startsWith('image/') || file.size > MAX_GALLERY_BYTES) { rejected += 1; continue; }
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${tenant.id}/${professional.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('professional-gallery').upload(path, file, { cacheControl: '3600' });
+      if (upErr) { rejected += 1; continue; }
+      newUrls.push(supabase.storage.from('professional-gallery').getPublicUrl(path).data.publicUrl);
+    }
+    if (newUrls.length) await saveGallery([...gallery, ...newUrls], `${newUrls.length} foto${newUrls.length === 1 ? '' : 's'} agregada${newUrls.length === 1 ? '' : 's'}`);
+    setUploadingGallery(false);
+    if (rejected) toast(`${rejected} archivo${rejected === 1 ? '' : 's'} no se pudo subir (imágenes de hasta 3 MB)`);
+  }
+
+  async function removeGalleryPhoto(url) {
+    if (!(await saveGallery(gallery.filter((u) => u !== url), 'Foto eliminada'))) return;
+    // La URL pública termina en el path dentro del bucket: se borra también el archivo para no
+    // dejar fotos huérfanas pagando storage y visibles a quien tenga el link.
+    const path = url.split('?')[0].split('/professional-gallery/')[1];
+    if (path) supabase.storage.from('professional-gallery').remove([decodeURIComponent(path)]);
+  }
+
+  function movePhoto(index, delta) {
+    const target = index + delta;
+    if (target < 0 || target >= gallery.length) return;
+    const next = [...gallery];
+    [next[index], next[target]] = [next[target], next[index]];
+    saveGallery(next);
   }
 
   const [tiers, setTiers] = useState(null); // null = cargando
@@ -139,6 +199,8 @@ export default function PanelProfile() {
         <h1 className="text-[21px] font-extrabold tracking-tight text-[#0F172A]">Mi perfil</h1>
         <p className="mt-0.5 text-[12.5px] text-[#64748B]">Lo que ven tus clientes en el link público</p>
       </div>
+
+      <PublicLinkCard professional={professional} tenant={tenant} />
 
       <NotificationsCard />
 
@@ -248,6 +310,66 @@ export default function PanelProfile() {
       </div>
 
       <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="mr-auto">
+            <div className="text-[13.5px] font-bold">Mis fotos de trabajos</div>
+            <p className="mt-0.5 text-[12px] text-[#64748B]">
+              Se ven como carrusel en tu link público. La primera es la portada · {gallery.length}/{MAX_GALLERY_PHOTOS}
+            </p>
+          </div>
+          <label className="w-fit flex-none cursor-pointer rounded-[9px] border border-[#E2E5EC] px-3 py-2 text-[12px] font-semibold text-[#0F172A]">
+            {uploadingGallery ? 'Subiendo…' : '+ Agregar fotos'}
+            <input type="file" accept="image/*" multiple onChange={uploadGalleryPhotos} disabled={uploadingGallery} className="hidden" />
+          </label>
+        </div>
+
+        {gallery.length === 0 ? (
+          <p className="mt-3 rounded-[12px] border border-dashed border-[#D3D7E0] px-3 py-6 text-center text-[12.5px] text-[#64748B]">
+            Todavía no subiste fotos. Mostrá tus trabajos: es lo primero que mira quien abre tu link.
+          </p>
+        ) : (
+          <div className="mt-3 grid grid-cols-1 items-start gap-3 @[900px]:grid-cols-[1fr_260px]">
+            <div className="flex flex-wrap gap-2">
+              {gallery.map((url, i) => (
+                <div key={url} className="relative h-24 w-24 flex-none overflow-hidden rounded-[12px] border border-[#E2E5EC]">
+                  <img src={url} alt={`Trabajo ${i + 1}`} className="h-full w-full object-cover" />
+                  {i === 0 && (
+                    <span className="absolute inset-x-0 bottom-0 bg-black/55 py-0.5 text-center text-[9px] font-bold text-white">Portada</span>
+                  )}
+                  {/* Siempre visibles, no en :hover: en el teléfono no hay puntero y con el
+                      patrón de hover las fotos no se podían ni borrar ni reordenar. */}
+                  <button
+                    type="button" onClick={() => removeGalleryPhoto(url)} aria-label={`Quitar foto ${i + 1}`}
+                    className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-[12px] text-white"
+                  >
+                    ✕
+                  </button>
+                  <div className="absolute left-1 top-1 flex gap-1">
+                    <button
+                      type="button" onClick={() => movePhoto(i, -1)} disabled={i === 0} aria-label={`Mover foto ${i + 1} antes`}
+                      className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-[12px] text-white disabled:opacity-30"
+                    >
+                      ‹
+                    </button>
+                    <button
+                      type="button" onClick={() => movePhoto(i, 1)} disabled={i === gallery.length - 1} aria-label={`Mover foto ${i + 1} después`}
+                      className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-[12px] text-white disabled:opacity-30"
+                    >
+                      ›
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11.5px] font-bold text-[#475569]">Así lo ve tu cliente</span>
+              <PhotoCarousel photos={gallery} alt="Trabajo" className="h-44" rounded="rounded-[14px]" frameClass="border border-[#E2E5EC]" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-4">
         <div className="mb-1 text-[13.5px] font-bold">Fidelización</div>
         <p className="mb-3 max-w-[560px] text-[12px] text-[#64748B]">
           A partir de cuántas visitas COMPLETADAS contigo un cliente alcanza cada medalla, y qué descuento le aplicás al
@@ -291,6 +413,54 @@ export default function PanelProfile() {
             </button>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// "Tu link público": lo que el profesional reparte a SUS clientes para que agenden con él. Antes
+// no estaba en ninguna pantalla del panel -- el único link visible era el del salón, en Ajustes,
+// que además solo ve un admin.
+function PublicLinkCard({ professional, tenant }) {
+  const toast = useToast();
+  const myUrl = professionalPublicUrl(tenant.slug, professional);
+  const salonUrl = tenantBookingUrl(tenant.slug);
+
+  async function copy(url, label) {
+    toast((await copyText(url)) ? `${label} copiado` : 'No pudimos copiar: mantené presionado el link para copiarlo a mano');
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-[16px] border border-[#E2E5EC] bg-white p-4">
+      <div>
+        <div className="text-[13.5px] font-bold">Tu link público</div>
+        <p className="mt-0.5 text-[12px] text-[#64748B]">Compartilo con tus clientes: abre tu perfil y reservan directo contigo.</p>
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-[12px] border border-[#E2E5EC] bg-[#F8FAFC] p-3">
+        <a href={myUrl} target="_blank" rel="noreferrer" className="break-all font-mono text-[12px] font-semibold text-[#0F172A] underline">
+          {myUrl.replace(/^https?:\/\//, '')}
+        </a>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => copy(myUrl, 'Tu link')} className="min-h-9 flex-1 rounded-[10px] bg-[#0F172A] px-3 text-[12.5px] font-bold text-white">
+            Copiar mi link
+          </button>
+          <a
+            href={whatsappShareUrl(`Agendá conmigo acá: ${myUrl}`)}
+            target="_blank"
+            rel="noreferrer"
+            className="flex min-h-9 flex-1 items-center justify-center rounded-[10px] border border-[#E2E5EC] px-3 text-[12.5px] font-semibold text-[#0F172A]"
+          >
+            Enviar por WhatsApp
+          </a>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-[12px] text-[#64748B]">
+        <span className="mr-auto">Link del salón completo: <span className="font-mono text-[11.5px] text-[#0F172A]">{salonUrl.replace(/^https?:\/\//, '')}</span></span>
+        <button type="button" onClick={() => copy(salonUrl, 'Link del salón')} className="min-h-8 rounded-[9px] border border-[#E2E5EC] px-2.5 text-[11.5px] font-semibold text-[#0F172A]">
+          Copiar
+        </button>
       </div>
     </div>
   );

@@ -102,7 +102,8 @@ export default function PanelDashboard() {
 
         <div className="flex flex-col gap-3">
           <div className="rounded-[14px] border border-[#E2E5EC] bg-white p-3.5">
-            <div className="mb-2.5 text-[13.5px] font-bold text-[#0F172A]">Servicios más solicitados</div>
+            <div className="text-[13.5px] font-bold text-[#0F172A]">Servicios más solicitados</div>
+            <p className="mb-2.5 mt-0.5 text-[11.5px] text-[#94A3B8]">Cuenta solo citas confirmadas o completadas de la semana.</p>
             {data.week.topServices.length === 0 && <p className="text-[12.5px] text-[#64748B]">Sin datos esta semana.</p>}
             <div className="flex flex-col gap-2.5">
               {data.week.topServices.map((s) => (

@@ -15,7 +15,7 @@ const SESSION_CACHE_KEY = 'panel-session';
 // colgadas sin rechazar la promesa.
 const OFFLINE_RESCUE_MS = 3000;
 const PROFESSIONAL_SELECT =
-  'id, tenant_id, name, role_title, initials, avatar_url, bio, instagram, whatsapp, role, active, email, rating_avg, rating_count, tenants(*)';
+  'id, tenant_id, name, role_title, initials, avatar_url, bio, instagram, whatsapp, gallery_urls, public_slug, role, active, email, rating_avg, rating_count, tenants(*)';
 
 // Sesión del panel: además del JWT de Supabase Auth, resuelve el registro de `professionals`
 // (y su tenant) que ese usuario representa. Todo el panel opera dentro de ese único tenant.

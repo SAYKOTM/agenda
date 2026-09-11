@@ -273,7 +273,7 @@ export default function PanelSettings() {
                 {i === 0 && <span className="absolute bottom-0 left-0 right-0 bg-black/55 py-0.5 text-center text-[9px] font-bold text-white">Principal</span>}
                 <button
                   type="button" onClick={() => removeGalleryPhoto(url)} aria-label="Quitar foto"
-                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[11px] text-white opacity-0 group-hover:opacity-100"
+                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-[11px] text-white"
                 >
                   ✕
                 </button>

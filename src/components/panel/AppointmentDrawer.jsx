@@ -6,6 +6,7 @@ import { money, durLabel, hhmm, dateLine, capitalize } from '../../lib/format';
 import { paymentMethodLabel } from '../../lib/paymentLabels';
 import { useToast } from '../Toast';
 import SlotPicker from '../SlotPicker';
+import ModalPortal from './ModalPortal';
 
 const STATUS_LABEL = { pendiente: 'Pendiente', confirmada: 'Confirmada', completada: 'Completada', cancelada: 'Cancelada', 'no-show': 'No-show' };
 const STATUS_CLASS = {
@@ -88,10 +89,10 @@ export default function AppointmentDrawer({ booking, tenant, onClose, onChanged 
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex justify-end bg-[rgba(15,23,42,.4)]" onClick={onClose}>
+    <ModalPortal onClose={onClose} align="end">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex h-full w-full flex-col gap-3.5 overflow-y-auto bg-white p-4 [animation:fadeUp_.2s_ease] @[520px]:w-[392px]"
+        className="flex h-full max-h-full w-full flex-col gap-3.5 overflow-y-auto bg-white p-4 [animation:fadeUp_.2s_ease] min-[520px]:w-[392px]"
         style={{ overscrollBehavior: 'contain', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}
       >
         <div className="flex items-start justify-between gap-3">
@@ -172,7 +173,7 @@ export default function AppointmentDrawer({ booking, tenant, onClose, onChanged 
           </div>
         )}
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

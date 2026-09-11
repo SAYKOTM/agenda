@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { inviteProfessional, ApiError } from '../../lib/api';
 import { useToast } from '../Toast';
+import ModalPortal from './ModalPortal';
 
 const inputCls = 'min-h-11 w-full rounded-[10px] border border-[#D3D7E0] bg-white px-3 text-[15px] text-[#0F172A]';
 
@@ -31,10 +32,10 @@ export default function InviteProfessionalModal({ onClose, onInvited }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[75] flex items-center justify-center bg-[rgba(15,23,42,.4)] p-0 @[520px]:p-5" onClick={onClose}>
+    <ModalPortal onClose={onClose} z={75}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex h-full w-full max-h-full flex-col gap-3 overflow-y-auto bg-white p-4.5 [animation:fadeUp_.2s_ease] @[520px]:h-auto @[520px]:w-[440px] @[520px]:rounded-[20px]"
+        className="flex h-full max-h-full w-full flex-col gap-3 overflow-y-auto bg-white p-4.5 [animation:fadeUp_.2s_ease] min-[520px]:h-auto min-[520px]:max-h-[85dvh] min-[520px]:w-full min-[520px]:max-w-[440px] min-[520px]:rounded-[20px]"
         style={{ overscrollBehavior: 'contain', paddingBottom: 'calc(18px + env(safe-area-inset-bottom))' }}
       >
         <div className="flex items-center justify-between">
@@ -68,6 +69,6 @@ export default function InviteProfessionalModal({ onClose, onInvited }) {
           {saving ? 'Enviando…' : 'Enviar invitación'}
         </button>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

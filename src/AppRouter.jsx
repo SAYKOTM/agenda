@@ -8,6 +8,7 @@ import Terms from './pages/Terms';
 import PrivacyRequest from './pages/PrivacyRequest';
 import TenantLanding from './pages/TenantLanding';
 import BookingWizard from './pages/BookingWizard';
+import ProfessionalPublic from './pages/ProfessionalPublic';
 import ManageBooking from './pages/ManageBooking';
 import NotFound from './pages/NotFound';
 import PanelLogin from './pages/panel/PanelLogin';
@@ -56,6 +57,7 @@ export default function AppRouter() {
           </Route>
           <Route path="/:slug" element={<TenantLanding />} />
           <Route path="/:slug/reservar" element={<BookingWizard />} />
+          <Route path="/:slug/con/:proSlug" element={<ProfessionalPublic />} />
           <Route path="/:slug/reserva/:token" element={<ManageBooking />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

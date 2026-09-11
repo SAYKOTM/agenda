@@ -5,14 +5,31 @@ import { usePanelServices } from '../../features/panel/usePanelServices';
 import { useToast } from '../../components/Toast';
 import ServiceFormModal from '../../components/panel/ServiceFormModal';
 import { money, durLabel } from '../../lib/format';
+import { recolorServices, serviceColorName } from '../../lib/serviceColors';
 
 export default function PanelServices() {
   const { tenant, professional } = useOutletContext();
   const toast = useToast();
   const { loading, error, categories, services, reload } = usePanelServices(tenant.id, professional.id);
   const [editing, setEditing] = useState(undefined); // undefined = cerrado, null = nuevo, objeto = editar
+  const [recoloring, setRecoloring] = useState(false);
 
   const catName = Object.fromEntries(categories.map((c) => [c.id, c.name]));
+  const usedColors = services.map((s) => s.color);
+
+  // Reparte la paleta nueva entre los servicios ya creados: los de antes quedaron con tonos
+  // parecidos entre sí (varios azules) y cambiarlos de a uno en el modal es tedioso.
+  async function recolor() {
+    if (!confirm('¿Asignar un color distinto a cada servicio? Se pisan los colores actuales.')) return;
+    setRecoloring(true);
+    const results = await Promise.all(
+      recolorServices(services).map(({ id, color }) => supabase.from('services').update({ color }).eq('id', id))
+    );
+    setRecoloring(false);
+    if (results.some((r) => r.error)) toast('No pudimos recolorear todos los servicios');
+    else toast('Colores repartidos');
+    reload();
+  }
 
   async function remove(svc) {
     if (!confirm(`¿Eliminar "${svc.name}"?`)) return;
@@ -31,6 +48,11 @@ export default function PanelServices() {
           <h1 className="text-[21px] font-extrabold tracking-tight text-[#0F172A]">Mis servicios</h1>
           <p className="mt-0.5 text-[12.5px] text-[#64748B]">{services.length} servicios · tu catálogo personal</p>
         </div>
+        {services.length > 1 && (
+          <button type="button" onClick={recolor} disabled={recoloring} className="min-h-9 rounded-[9px] border border-[#E2E5EC] bg-white px-3 text-[12.5px] font-semibold text-[#0F172A] disabled:opacity-50">
+            {recoloring ? 'Recoloreando…' : 'Recolorear'}
+          </button>
+        )}
         <button type="button" onClick={() => setEditing(null)} disabled={!categories.length} className="min-h-9 rounded-[9px] bg-[#0F172A] px-3.5 text-[12.5px] font-bold text-white disabled:opacity-50">+ Nuevo servicio</button>
       </div>
 
@@ -55,7 +77,7 @@ export default function PanelServices() {
               <div key={s.id} className="flex flex-col gap-2 rounded-[14px] border border-[#E2E5EC] p-3 @[1024px]:grid @[1024px]:grid-cols-[2.4fr_1fr_.8fr_.8fr_.8fr_.8fr_84px] @[1024px]:items-center @[1024px]:gap-2.5 @[1024px]:rounded-none @[1024px]:border-0 @[1024px]:border-b @[1024px]:border-[#F1F2F5] @[1024px]:p-3.5">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: s.color }} aria-hidden="true" />
+                    <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: s.color }} title={serviceColorName(s.color)} />
                     <span className="text-[13.5px] font-bold @[1024px]:text-[13px] @[1024px]:font-semibold">{s.name}</span>
                     <span className={'rounded-[7px] px-2 py-0.5 text-[10.5px] font-bold ' + (s.active ? 'bg-[#E7F4EC] text-[#1E6B43]' : 'bg-[#F2F4F7] text-[#64748B]')}>{s.active ? 'Activo' : 'Inactivo'}</span>
                   </div>
@@ -82,6 +104,7 @@ export default function PanelServices() {
           professionalId={professional.id}
           categories={categories}
           service={editing}
+          usedColors={editing ? usedColors.filter((c) => c !== editing.color) : usedColors}
           onClose={() => setEditing(undefined)}
           onSaved={reload}
         />

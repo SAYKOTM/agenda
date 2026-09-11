@@ -1,20 +1,20 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../Toast';
+import ModalPortal from './ModalPortal';
+import { SERVICE_COLORS, serviceColorName, nextServiceColor } from '../../lib/serviceColors';
 
 const inputCls = 'min-h-11 w-full rounded-[10px] border border-[#D3D7E0] bg-white px-3 text-[15px] text-[#0F172A]';
 
-const emptyDraft = (tenantId, categoryId) => ({
+const emptyDraft = (tenantId, categoryId, usedColors) => ({
   tenant_id: tenantId, category_id: categoryId, name: '', description: '',
   duration_min: 30, price_clp: 12000, buffer_before_min: 0, buffer_after_min: 10,
-  deposit_required: false, deposit_amount_clp: null, active: true, color: COLOR_PRESETS[0],
+  deposit_required: false, deposit_amount_clp: null, active: true, color: nextServiceColor(usedColors),
 });
 
-const COLOR_PRESETS = ['#4F46E5', '#2C8B58', '#E0891B', '#C0402B', '#7C3AED', '#0891B2', '#DB2777', '#64748B'];
-
-export default function ServiceFormModal({ tenantId, professionalId, categories, service, onClose, onSaved }) {
+export default function ServiceFormModal({ tenantId, professionalId, categories, service, usedColors = [], onClose, onSaved }) {
   const toast = useToast();
-  const [draft, setDraft] = useState(service ? { ...service } : emptyDraft(tenantId, categories[0]?.id));
+  const [draft, setDraft] = useState(service ? { ...service } : emptyDraft(tenantId, categories[0]?.id, usedColors));
   const [saving, setSaving] = useState(false);
 
   function set(field, value) {
@@ -32,7 +32,7 @@ export default function ServiceFormModal({ tenantId, professionalId, categories,
       duration_min: Number(draft.duration_min) || 1, price_clp: Number(draft.price_clp) || 0,
       buffer_before_min: Number(draft.buffer_before_min) || 0, buffer_after_min: Number(draft.buffer_after_min) || 0,
       deposit_required: !!draft.deposit_required, deposit_amount_clp: draft.deposit_required ? Number(draft.deposit_amount_clp) || 0 : null,
-      active: !!draft.active, color: draft.color || COLOR_PRESETS[0],
+      active: !!draft.active, color: draft.color || SERVICE_COLORS[0].hex,
     };
     const { error } = service
       ? await supabase.from('services').update(payload).eq('id', service.id)
@@ -48,10 +48,10 @@ export default function ServiceFormModal({ tenantId, professionalId, categories,
   }
 
   return (
-    <div className="fixed inset-0 z-[75] flex items-center justify-center bg-[rgba(15,23,42,.4)] p-0 @[640px]:p-5" onClick={onClose}>
+    <ModalPortal onClose={onClose} z={75}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex h-full w-full max-h-full flex-col gap-3 overflow-y-auto bg-white p-4.5 [animation:fadeUp_.2s_ease] @[640px]:h-auto @[640px]:w-[520px] @[640px]:rounded-[20px]"
+        className="flex h-full max-h-full w-full flex-col gap-3 overflow-y-auto bg-white p-4.5 [animation:fadeUp_.2s_ease] min-[520px]:h-auto min-[520px]:max-h-[90dvh] min-[520px]:w-full min-[520px]:max-w-[520px] min-[520px]:rounded-[20px]"
         style={{ overscrollBehavior: 'contain', paddingBottom: 'calc(18px + env(safe-area-inset-bottom))' }}
       >
         <div className="flex items-center justify-between">
@@ -73,30 +73,44 @@ export default function ServiceFormModal({ tenantId, professionalId, categories,
           <Field label="Buffer después (min)"><input type="number" min={0} value={draft.buffer_after_min} onChange={(e) => set('buffer_after_min', e.target.value)} className={inputCls} /></Field>
         </div>
 
-        <Field label="Color en la agenda">
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={draft.color || COLOR_PRESETS[0]}
-              onChange={(e) => set('color', e.target.value)}
-              className="h-9 w-11 flex-none cursor-pointer rounded-[8px] border border-[#D3D7E0] bg-white p-1"
-              aria-label="Color personalizado"
-            />
-            <div className="flex flex-1 flex-wrap gap-1.5">
-              {COLOR_PRESETS.map((c) => (
+        {/* Un div, no <Field>: adentro hay un <label> propio (el selector "Otro") y anidar
+            labels es HTML inválido. */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[11.5px] font-bold text-[#475569]">Color en la agenda · {serviceColorName(draft.color)}</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {SERVICE_COLORS.map((c) => {
+              const taken = usedColors.some((u) => String(u).toLowerCase() === c.hex.toLowerCase()) && draft.color !== c.hex;
+              return (
                 <button
-                  key={c}
+                  key={c.hex}
                   type="button"
-                  onClick={() => set('color', c)}
-                  aria-label={`Usar color ${c}`}
-                  aria-pressed={draft.color === c}
-                  className={'h-7 w-7 flex-none rounded-full border-2 ' + (draft.color === c ? 'border-[#0F172A]' : 'border-transparent')}
-                  style={{ background: c }}
-                />
-              ))}
-            </div>
+                  onClick={() => set('color', c.hex)}
+                  title={taken ? `${c.name} · ya lo usa otro servicio tuyo` : c.name}
+                  aria-label={`Usar color ${c.name}`}
+                  aria-pressed={draft.color === c.hex}
+                  className={
+                    'relative flex h-10 w-10 flex-none items-center justify-center rounded-full border-2 text-[13px] font-bold text-white ' +
+                    (draft.color === c.hex ? 'border-[#0F172A]' : 'border-transparent')
+                  }
+                  style={{ background: c.hex }}
+                >
+                  {draft.color === c.hex ? '✓' : taken ? <span className="h-1.5 w-1.5 rounded-full bg-white/85" /> : ''}
+                </button>
+              );
+            })}
+            <label className="flex min-h-10 cursor-pointer items-center gap-1.5 rounded-[10px] border border-[#D3D7E0] px-2 text-[11.5px] font-semibold text-[#475569]">
+              Otro
+              <input
+                type="color"
+                value={draft.color || SERVICE_COLORS[0].hex}
+                onChange={(e) => set('color', e.target.value)}
+                className="h-7 w-8 cursor-pointer rounded-[6px] border-0 bg-white p-0"
+                aria-label="Color personalizado"
+              />
+            </label>
           </div>
-        </Field>
+          <span className="text-[11px] text-[#94A3B8]">El punto blanco marca los colores que ya usás en otro servicio.</span>
+        </div>
 
         <div className="flex items-center justify-between rounded-[11px] border border-[#E2E5EC] px-3 py-2.5">
           <span className="text-[13px] font-semibold">Requiere seña</span>
@@ -114,7 +128,7 @@ export default function ServiceFormModal({ tenantId, professionalId, categories,
           {saving ? 'Guardando…' : 'Guardar servicio'}
         </button>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

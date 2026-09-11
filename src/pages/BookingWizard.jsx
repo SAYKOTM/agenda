@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Temporal } from '@js-temporal/polyfill';
 import { useTenantData } from '../features/tenant/useTenantData';
 import { supabase } from '../lib/supabaseClient';
@@ -8,6 +8,7 @@ import { hhmm, dateLine, capitalize } from '../lib/format';
 import { useToast } from '../components/Toast';
 import ClientShell from '../components/ClientShell';
 import WizardHeader from '../components/WizardHeader';
+import { professionalPublicPath } from '../lib/publicLinks';
 import StepProfessional from '../features/booking/steps/StepProfessional';
 import StepServices from '../features/booking/steps/StepServices';
 import StepTime from '../features/booking/steps/StepTime';
@@ -19,11 +20,17 @@ export default function BookingWizard() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const [searchParams] = useSearchParams();
   const { loading, error, redirectSlug, tenant, categories, professionals, paymentMethods, bankAccount } = useTenantData(slug);
 
+  // ?con=<public_slug|id>: el cliente llegó por el link propio de un profesional (su perfil
+  // público o el link que reparte por WhatsApp), así que ya viene elegido y el paso 1 se saltea.
+  const linkedProKey = searchParams.get('con');
+  const linkedPro = professionals.find((p) => p.public_slug === linkedProKey || p.id === linkedProKey) || null;
   const singlePro = professionals.length === 1;
-  const steps = useMemo(() => (singlePro ? ['services', 'time', 'form', 'pay', 'done'] : ['pro', 'services', 'time', 'form', 'pay', 'done']), [singlePro]);
-  const stepCount = singlePro ? 4 : 5;
+  const skipProStep = singlePro || !!linkedPro;
+  const steps = useMemo(() => (skipProStep ? ['services', 'time', 'form', 'pay', 'done'] : ['pro', 'services', 'time', 'form', 'pay', 'done']), [skipProStep]);
+  const stepCount = skipProStep ? 4 : 5;
 
   const [step, setStep] = useState(null);
   const [professionalId, setProfessionalId] = useState(null);
@@ -39,11 +46,12 @@ export default function BookingWizard() {
 
   useEffect(() => {
     if (!loading && !error && !redirectSlug && step === null) {
-      if (singlePro) setProfessionalId(professionals[0].id);
-      setStep(singlePro ? 'services' : 'pro');
+      if (linkedPro) setProfessionalId(linkedPro.id);
+      else if (singlePro) setProfessionalId(professionals[0].id);
+      setStep(skipProStep ? 'services' : 'pro');
       setDate(Temporal.Now.plainDateISO(tenant.timezone).toString());
     }
-  }, [loading, error, redirectSlug, singlePro, professionals, tenant, step]);
+  }, [loading, error, redirectSlug, singlePro, skipProStep, linkedPro, professionals, tenant, step]);
 
   if (loading) return <LoadingShell />;
   if (redirectSlug) return <Navigate to={`/${redirectSlug}/reservar`} replace />;
@@ -67,7 +75,9 @@ export default function BookingWizard() {
 
   function goBack() {
     const i = steps.indexOf(step);
-    if (i <= 0) navigate(`/${slug}`);
+    // Con un link de profesional, "atrás" desde el primer paso devuelve a SU perfil, no a la
+    // portada del salón: es de donde viene el cliente.
+    if (i <= 0) navigate(linkedPro ? professionalPublicPath(slug, linkedPro) : `/${slug}`);
     else setStep(steps[i - 1]);
   }
 
@@ -138,6 +148,7 @@ export default function BookingWizard() {
 
       {step === 'pro' && (
         <StepProfessional
+          slug={slug}
           professionals={professionals}
           selected={professionalId}
           onSelect={(id) => {

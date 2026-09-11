@@ -1,16 +1,17 @@
 import { useEffect } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useTenantData } from '../features/tenant/useTenantData';
 import { supabase } from '../lib/supabaseClient';
 import { money, durLabel } from '../lib/format';
 import { wazeUrl, googleMapsUrl, appleMapsUrl, googleWriteReviewUrl, googleMapsEmbedUrl } from '../lib/mapLinks';
+import { professionalPublicPath } from '../lib/publicLinks';
 import ClientShell from '../components/ClientShell';
 import LocationMap from '../components/LocationMap';
 
 export default function TenantLanding() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { loading, error, redirectSlug, tenant, categories } = useTenantData(slug);
+  const { loading, error, redirectSlug, tenant, categories, professionals } = useTenantData(slug);
 
   // Aproximación simple del tracker de conversión: cuenta vistas de la landing pública, no
   // deduplicada por sesión (ver panel_month_summary, migración 0016_analytics.sql).
@@ -72,6 +73,8 @@ export default function TenantLanding() {
           {tenant.hours_label && <InfoRow label="Horario" value={tenant.hours_label} />}
         </div>
 
+        {professionals.length > 0 && <TeamBlock slug={slug} professionals={professionals} />}
+
         {topServices.length > 0 && (
           <div>
             <div className="mb-2.5 font-mono text-[10px] uppercase tracking-wider text-[var(--t-sub)]">Más pedidos</div>
@@ -100,6 +103,38 @@ export default function TenantLanding() {
         </button>
       </div>
     </ClientShell>
+  );
+}
+
+// Equipo del salón: la cara de cada profesional (la foto que subió en su perfil) con link a su
+// perfil público. Antes la foto del profesional no aparecía en ninguna parte del lado cliente.
+function TeamBlock({ slug, professionals }) {
+  return (
+    <div>
+      <div className="mb-2.5 font-mono text-[10px] uppercase tracking-wider text-[var(--t-sub)]">Quiénes te atienden</div>
+      <div className="flex gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        {professionals.map((p) => (
+          <Link
+            key={p.id}
+            to={professionalPublicPath(slug, p)}
+            className="flex w-24 flex-none flex-col items-center gap-1.5 rounded-[16px] border border-[var(--t-border)] bg-[var(--t-panel)] px-2 py-2.5 text-center"
+          >
+            {p.avatar_url ? (
+              <img src={p.avatar_url} alt={p.name} className="h-14 w-14 rounded-full object-cover" />
+            ) : (
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--t-border)] text-[15px] font-bold">{p.initials}</span>
+            )}
+            <span className="w-full truncate text-[12px] font-bold leading-tight">{p.name.split(' ')[0]}</span>
+            {p.role_title && <span className="w-full truncate text-[10.5px] text-[var(--t-sub)]">{p.role_title}</span>}
+            {p.rating_count > 0 && (
+              <span className="text-[10.5px] text-[var(--t-sub)]">
+                <span style={{ color: 'var(--t-accent)' }}>★</span> {p.rating_avg}
+              </span>
+            )}
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
 
