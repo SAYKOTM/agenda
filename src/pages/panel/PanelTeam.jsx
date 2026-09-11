@@ -6,6 +6,8 @@ import { useToast } from '../../components/Toast';
 import InviteProfessionalModal from '../../components/panel/InviteProfessionalModal';
 import EditProfessionalModal from '../../components/panel/EditProfessionalModal';
 import { money } from '../../lib/format';
+import { copyText } from '../../lib/clipboard';
+import { professionalPublicUrl } from '../../lib/publicLinks';
 
 export default function PanelTeam() {
   const { tenant, professional: me } = useOutletContext();
@@ -16,6 +18,11 @@ export default function PanelTeam() {
   const [editing, setEditing] = useState(null);
 
   const statsByPro = Object.fromEntries(ranking.map((r) => [r.professional_id, r]));
+
+  async function copyProLink(pro) {
+    const url = professionalPublicUrl(tenant.slug, pro);
+    toast((await copyText(url)) ? `Link de ${pro.name.split(' ')[0]} copiado` : 'No pudimos copiar el link');
+  }
 
   async function toggleActive(p) {
     if (p.id === me.id) {
@@ -71,7 +78,17 @@ export default function PanelTeam() {
                     <div><div className="text-[10.5px] text-[#94A3B8]">Ingresos</div><span className="font-mono font-medium">{stats ? money(stats.revenue, tenant.currency) : '—'}</span></div>
                   </div>
                 )}
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {/* El link propio de cada profesional: el admin es quien arma los flyers y los
+                      estados de WhatsApp del salón, así que necesita poder copiar el de cualquiera
+                      sin pedírselo. */}
+                  <button
+                    type="button"
+                    onClick={() => copyProLink(p)}
+                    className="min-h-9 flex-1 rounded-[9px] border border-[#E2E5EC] px-2.5 text-[12px] font-semibold @[700px]:flex-none"
+                  >
+                    Copiar link
+                  </button>
                   <button type="button" onClick={() => setEditing(p)} className="min-h-9 flex-1 rounded-[9px] border border-[#E2E5EC] px-2.5 text-[12px] font-semibold @[700px]:flex-none">Permisos</button>
                   <button
                     type="button"

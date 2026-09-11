@@ -48,7 +48,13 @@ Deno.serve(async (req) => {
     .map((w: string) => w[0]?.toUpperCase() || '')
     .join('');
 
-  const { data: invited, error: inviteErr } = await db.auth.admin.inviteUserByEmail(email.trim());
+  // Sin redirectTo, el link del correo lleva al Site URL del proyecto (la portada pública, o
+  // peor, lo que haya quedado configurado ahí) en vez de al panel donde la persona tiene que
+  // elegir su contraseña y empezar a trabajar.
+  const appUrl = Deno.env.get('APP_URL') || 'http://localhost:5173';
+  const { data: invited, error: inviteErr } = await db.auth.admin.inviteUserByEmail(email.trim(), {
+    redirectTo: `${appUrl}/panel`,
+  });
   if (inviteErr) return errorResponse(`no pudimos invitar por email: ${inviteErr.message}`, 400);
 
   const { data: professional, error: insertErr } = await db

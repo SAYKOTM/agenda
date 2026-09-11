@@ -25,7 +25,7 @@ export default function TenantLanding() {
   if (error) return <ErrorShell error={error} slug={slug} />;
 
   const allServices = categories.flatMap((c) => c.services);
-  const topServices = allServices.slice(0, 4);
+  const topServices = groupServicesByName(allServices).slice(0, 4);
 
   return (
     <ClientShell theme={tenant.theme}>
@@ -74,11 +74,14 @@ export default function TenantLanding() {
             <div className="mb-2.5 font-mono text-[10px] uppercase tracking-wider text-[var(--t-sub)]">Más pedidos</div>
             <div className="flex flex-col gap-2">
               {topServices.map((s) => (
-                <div key={s.id} className="flex items-baseline gap-2.5 text-[13.5px]">
+                <div key={s.name} className="flex items-baseline gap-2.5 text-[13.5px]">
                   <span className="flex-1">{s.name}</span>
                   <span className="h-px w-6 flex-none bg-[var(--t-border)]" />
                   <span className="font-mono text-xs text-[var(--t-sub)]">{durLabel(s.duration_min)}</span>
-                  <span className="text-[13px] font-bold">{money(s.price_clp, tenant.currency)}</span>
+                  <span className="text-[13px] font-bold">
+                    {s.fromPrice ? 'desde ' : ''}
+                    {money(s.price_clp, tenant.currency)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -98,6 +101,27 @@ export default function TenantLanding() {
       </div>
     </ClientShell>
   );
+}
+
+// Cada profesional tiene su propio catálogo, así que "Corte clásico" existe una vez por cada uno
+// que lo ofrece y la portada los listaba repetidos, con el mismo nombre y el mismo precio. Acá se
+// agrupan por nombre: el cliente ve la lista de servicios del salón, y cuando el mismo servicio
+// tiene precios distintos según con quién se atienda, se muestra el más barato con un "desde".
+function groupServicesByName(services) {
+  const byName = new Map();
+  for (const service of services) {
+    const group = byName.get(service.name);
+    if (!group) {
+      byName.set(service.name, { ...service, fromPrice: false });
+      continue;
+    }
+    if (service.price_clp !== group.price_clp) group.fromPrice = true;
+    if (service.price_clp < group.price_clp) {
+      group.price_clp = service.price_clp;
+      group.duration_min = service.duration_min;
+    }
+  }
+  return [...byName.values()];
 }
 
 function GalleryBlock({ gallery }) {

@@ -20,8 +20,8 @@ export function ToastProvider({ children }) {
       <div
         role="status"
         aria-live="polite"
-        className="fixed inset-x-0 bottom-4 z-[100] flex justify-center px-4 pointer-events-none"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="fixed inset-x-0 z-[100] flex justify-center px-4 pointer-events-none"
+        style={{ bottom: 'calc(1rem + var(--app-bottom-nav, 0px))', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {message && (
           <div className="pointer-events-auto rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-lg [animation:fadeUp_.2s_ease]">

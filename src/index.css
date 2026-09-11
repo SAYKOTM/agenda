@@ -22,6 +22,12 @@
   --color-status-noshow-bar: #d45b44;
 }
 
+/* Alto de la barra de navegación fija del panel en móvil, para que el aviso (Toast, que vive
+   fuera del layout) se apoye encima y no debajo. El panel prende la clase mientras está montado;
+   en escritorio la barra no existe, así que el desplazamiento es cero. */
+.has-panel-nav{--app-bottom-nav:0px}
+@media (max-width:767px){.has-panel-nav{--app-bottom-nav:calc(4.75rem + env(safe-area-inset-bottom))}}
+
 *{box-sizing:border-box}
 body{margin:0;background:#F1F2F5;font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
 button{font:inherit;cursor:pointer}

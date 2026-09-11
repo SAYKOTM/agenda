@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { usePanelSession } from '../../features/panel/usePanelSession';
 import { hasActiveAccess } from '../../lib/subscription';
@@ -47,6 +47,13 @@ export default function PanelLayout() {
       [toast]
     )
   );
+
+  // Marca el documento mientras el panel está montado, para que el aviso (Toast) se levante por
+  // encima de la barra inferior en el teléfono (ver .has-panel-nav en index.css).
+  useEffect(() => {
+    document.body.classList.add('has-panel-nav');
+    return () => document.body.classList.remove('has-panel-nav');
+  }, []);
 
   async function startCheckout() {
     setStartingCheckout(true);
