@@ -29,6 +29,15 @@ export function renderProfessionalPush(ctx: NotificationContext): { title: strin
   const when = formatWhen(ctx.startAt, ctx.tenantTimezone);
   const services = ctx.serviceNames.join(' + ') || 'Cita';
   switch (ctx.event) {
+    case 'waitlist': {
+      // Este no habla de la cita que se cayó sino de la oportunidad que dejó: quien lo lee tiene
+      // que saber de una que hay alguien esperando justo esa hora.
+      const waiting = ctx.waitlistCount || 1;
+      return {
+        title: `Se liberó ${when}`,
+        body: `${waiting} ${waiting === 1 ? 'persona esperaba' : 'personas esperaban'} ese día · avisales por WhatsApp`,
+      };
+    }
     case 'cancelled':
       return { title: `Cita cancelada — ${when}`, body: `${ctx.clientName} · ${services}` };
     case 'rescheduled':

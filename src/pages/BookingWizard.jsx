@@ -49,7 +49,10 @@ export default function BookingWizard() {
       if (linkedPro) setProfessionalId(linkedPro.id);
       else if (singlePro) setProfessionalId(professionals[0].id);
       setStep(skipProStep ? 'services' : 'pro');
-      setDate(Temporal.Now.plainDateISO(tenant.timezone).toString());
+      // ?fecha=YYYY-MM-DD: el cliente viene del mensaje de la lista de espera ("se liberó una hora
+      // el sábado"), así que el calendario abre en ese día y no en hoy.
+      const wanted = searchParams.get('fecha');
+      setDate(/^\d{4}-\d{2}-\d{2}$/.test(wanted || '') ? wanted : Temporal.Now.plainDateISO(tenant.timezone).toString());
     }
   }, [loading, error, redirectSlug, singlePro, skipProStep, linkedPro, professionals, tenant, step]);
 

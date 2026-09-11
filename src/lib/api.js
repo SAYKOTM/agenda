@@ -99,6 +99,10 @@ export function geocodeAddress() {
   return callAuthed('geocode-address', { method: 'POST' });
 }
 
+export function joinWaitlist(payload) {
+  return call('join-waitlist', { method: 'POST', body: payload });
+}
+
 export function submitPrivacyRequest(payload) {
   return call('submit-privacy-request', { method: 'POST', body: payload });
 }

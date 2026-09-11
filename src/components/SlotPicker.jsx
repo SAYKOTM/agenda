@@ -8,7 +8,7 @@ const WEEKDAYS_SHORT = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
 // Calendario + grilla de horas para una fecha. Reutilizado tanto en el paso "Fecha y hora" del
 // flujo de reserva como en "Reagendar" desde la gestión de una reserva existente.
-export default function SlotPicker({ tenantSlug, professionalId, serviceIds, timeZone, proLabel, durationLabel, date, slot, onPick, excludeBookingId }) {
+export default function SlotPicker({ tenantSlug, professionalId, serviceIds, timeZone, proLabel, durationLabel, date, slot, onPick, excludeBookingId, emptyExtra = null }) {
   const [viewMonth, setViewMonth] = useState(() => Temporal.PlainDate.from(date).toPlainYearMonth());
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -219,6 +219,8 @@ export default function SlotPicker({ tenantSlug, professionalId, serviceIds, tim
             >
               {searching ? 'Buscando…' : 'Ir al próximo día libre'}
             </button>
+            {/* El wizard público mete acá la lista de espera; el panel (reagendar) no pasa nada. */}
+            {emptyExtra}
           </div>
         )}
       </div>

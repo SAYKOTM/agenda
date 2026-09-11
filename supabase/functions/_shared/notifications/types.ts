@@ -24,7 +24,9 @@ export interface NotificationContext {
 
   // Solo los usa el canal push (aviso al profesional): qué pasó con la cita, cuál es y a dónde
   // llevar al tocar la notificación.
-  event?: 'created' | 'cancelled' | 'rescheduled';
+  event?: 'created' | 'cancelled' | 'rescheduled' | 'waitlist';
+  // Cuántas personas esperaban ese día: solo viaja con event 'waitlist'.
+  waitlistCount?: number;
   bookingId?: string;
   panelUrl?: string;
 }

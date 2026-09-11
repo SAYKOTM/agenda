@@ -421,6 +421,10 @@ verify_jwt = false
 [functions.submit-privacy-request]
 verify_jwt = false
 
+# Alta pública en la lista de espera: la llama el cliente desde el wizard, sin cuenta.
+[functions.join-waitlist]
+verify_jwt = false
+
 # Endpoint del panel (fase 4): sí requiere el JWT del profesional que llama -- la propia función
 # además verifica que sea 'admin' de un tenant activo antes de invitar (ver invite-professional).
 [functions.invite-professional]

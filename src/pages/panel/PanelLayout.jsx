@@ -19,6 +19,7 @@ const PRO_NAV = [
   { to: '/panel/agenda', label: 'Agenda', icon: '▦' },
   { to: '/panel/servicios', label: 'Mis servicios', icon: '✂' },
   { to: '/panel/clientes', label: 'Clientes', icon: '◐' },
+  { to: '/panel/espera', label: 'Espera', icon: '◷' },
   { to: '/panel/disponibilidad', label: 'Disponibilidad', icon: '◔' },
   { to: '/panel/perfil', label: 'Perfil', icon: '◑' },
 ];

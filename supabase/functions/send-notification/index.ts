@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
   const isPush = nq.channel === 'push';
   const label = isPush ? 'Push' : nq.channel === 'reminder' ? 'Reminder' : 'Confirmation';
   const appUrl = Deno.env.get('APP_URL') || 'http://localhost:5173';
-  const event = (nq.payload as any)?.event as 'created' | 'cancelled' | 'rescheduled' | undefined;
+  const event = (nq.payload as any)?.event as 'created' | 'cancelled' | 'rescheduled' | 'waitlist' | undefined;
 
   const ctx: NotificationContext = {
     type: isPush ? 'professional_alert' : nq.channel === 'reminder' ? 'reminder' : 'confirmation',
@@ -105,8 +105,13 @@ Deno.serve(async (req) => {
     manageUrl: `${appUrl}/${tenant?.slug || ''}/reserva/${booking.public_token}`,
     event,
     bookingId: booking.id,
-    // Al tocar el aviso, el service worker abre directamente el día de la cita en la agenda.
-    panelUrl: `/panel/agenda?date=${new Intl.DateTimeFormat('en-CA', { timeZone: tenant?.timezone || 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(booking.start_at))}`,
+    waitlistCount: (nq.payload as any)?.waiting,
+    // Al tocar el aviso, el service worker abre directamente donde hay algo que hacer: la lista de
+    // espera si se liberó una hora que alguien estaba esperando, y si no el día de la cita.
+    panelUrl:
+      event === 'waitlist'
+        ? '/panel/espera'
+        : `/panel/agenda?date=${new Intl.DateTimeFormat('en-CA', { timeZone: tenant?.timezone || 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(booking.start_at))}`,
   };
 
   // ---------- canal push: aviso al profesional ----------

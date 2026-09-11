@@ -1,4 +1,5 @@
 import SlotPicker from '../../../components/SlotPicker';
+import WaitlistPrompt from '../WaitlistPrompt';
 import { durLabel, hhmm, dateLine, capitalize } from '../../../lib/format';
 import { Temporal } from '@js-temporal/polyfill';
 
@@ -25,6 +26,15 @@ export default function StepTime({ tenant, professionalId, serviceIds, totalDura
           date={date}
           slot={slot}
           onPick={onPick}
+          emptyExtra={
+            <WaitlistPrompt
+              tenantSlug={tenant.slug}
+              professionalId={professionalId}
+              serviceIds={serviceIds}
+              date={date}
+              dateLabel={dateLine(Temporal.PlainDate.from(date))}
+            />
+          }
         />
       </div>
       <div className="flex-shrink-0 flex items-center gap-3 border-t border-[var(--t-border)] bg-[var(--t-bg)] px-4.5 pb-[calc(18px+env(safe-area-inset-bottom))] pt-3">
