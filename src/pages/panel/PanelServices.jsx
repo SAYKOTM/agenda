@@ -57,6 +57,12 @@ export default function PanelServices() {
       </div>
 
       {error && <p className="text-sm text-[#C0402B]">{error}</p>}
+      {!loading && !error && !categories.length && (
+        <p className="rounded-[12px] border border-[#EAD2A6] bg-[#FDF7EC] px-3 py-2.5 text-[12.5px] text-[#96540E]">
+          Tu salón todavía no tiene ninguna categoría, así que no se pueden crear servicios. Recargá la página; si sigue
+          igual, escribinos: se arregla desde el servidor en un minuto.
+        </p>
+      )}
       {loading && <p className="py-8 text-center text-sm text-[#64748B]">Cargando…</p>}
 
       {!loading && !error && services.length === 0 && (

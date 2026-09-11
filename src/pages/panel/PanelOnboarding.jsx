@@ -71,7 +71,7 @@ export default function PanelOnboarding({ email, onCreated }) {
         <label className="flex flex-col gap-1.5">
           <span className="text-[11.5px] font-bold text-[#475569]">Link público</span>
           <div className="flex min-h-12 items-center overflow-hidden rounded-[11px] border border-[#D3D7E0]">
-            <span className="whitespace-nowrap bg-[#F1F2F5] px-3 text-[13px] text-[#64748B]">agenda.app/</span>
+            <span className="whitespace-nowrap bg-[#F1F2F5] px-3 text-[13px] text-[#64748B]">{window.location.host}/</span>
             <input
               required
               value={slug}

@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../components/Toast';
 import { geocodeAddress, ApiError } from '../../lib/api';
 import ThemePicker from '../../components/panel/ThemePicker';
+import { copyText } from '../../lib/clipboard';
+import { tenantBookingUrl, whatsappShareUrl } from '../../lib/publicLinks';
 import { usePanelExport } from '../../features/panel/usePanelExport';
 
 const inputCls = 'min-h-11 w-full rounded-[10px] border border-[#D3D7E0] bg-white px-3 text-[14px] text-[#0F172A]';
@@ -112,6 +114,13 @@ export default function PanelSettings() {
   const [loyalty, setLoyalty] = useState({ enable_loyalty_discounts: !!tenant.enable_loyalty_discounts });
   const [loyaltySaving, setLoyaltySaving] = useState(false);
 
+  const publicUrl = tenantBookingUrl(tenant.slug);
+  const publicHost = publicUrl.replace(/^https?:\/\//, '').split('/')[0];
+
+  async function copyPublicUrl() {
+    toast((await copyText(publicUrl)) ? 'Link copiado' : 'No pudimos copiar: mantené presionado el link para copiarlo a mano');
+  }
+
   async function save() {
     setSaving(true);
     const payload = {
@@ -126,25 +135,28 @@ export default function PanelSettings() {
       return;
     }
 
-    // El mapa de la vista pública sale de tenants.lat/lng, y esas no se llenan solas: hasta ahora
-    // dependían de que el admin descubriera el botón "Ubicar en el mapa", así que el link público
-    // quedaba mostrando la dirección sin mapa. Al guardar se geocodifica solo, si la dirección
-    // cambió o si nunca se ubicó. Si Nominatim falla, el guardado igual valió y queda el botón.
-    const address = draft.address.trim();
-    const addressChanged = address !== (tenant.address || '').trim();
-    if (address && (addressChanged || tenant.lat == null)) {
-      try {
-        await geocodeAddress();
-      } catch {
-        toast('Guardamos los cambios, pero no pudimos ubicar la dirección en el mapa');
-        setSaving(false);
-        refresh();
-        return;
-      }
-    }
     setSaving(false);
     toast('Cambios guardados');
     refresh();
+
+    // El mapa de la vista pública sale de tenants.lat/lng, y esas no se llenan solas: hasta ahora
+    // dependían de que el admin descubriera el botón "Ubicar en el mapa", así que el link público
+    // quedaba mostrando la dirección sin mapa. Se geocodifica solo, si la dirección cambió o si
+    // nunca se ubicó, pero DESPUÉS de confirmar el guardado y en segundo plano: Nominatim puede
+    // tardar unos segundos y dejar el botón en "Guardando…" todo ese rato hace creer que no se
+    // guardó nada. El guardado ya está hecho; ubicar en el mapa es un extra.
+    const address = draft.address.trim();
+    const addressChanged = address !== (tenant.address || '').trim();
+    if (address && (addressChanged || tenant.lat == null)) {
+      setGeocoding(true);
+      geocodeAddress()
+        .then(() => {
+          toast('Ubicación actualizada en el mapa');
+          refresh();
+        })
+        .catch(() => toast('Guardamos la dirección, pero no pudimos ubicarla en el mapa: probá con "Ubicar en el mapa"'))
+        .finally(() => setGeocoding(false));
+    }
   }
 
   async function saveLoyalty(next) {
@@ -247,14 +259,37 @@ export default function PanelSettings() {
             {saving ? 'Guardando…' : 'Guardar cambios'}
           </button>
 
-          <div className="mt-1 border-t border-[#F1F2F5] pt-3">
-            <span className="text-[11.5px] font-bold text-[#475569]">Link público (slug)</span>
-            <div className="mt-1.5 flex items-center overflow-hidden rounded-[10px] border border-[#D3D7E0] bg-white">
-              <span className="flex min-h-10 items-center bg-[#F7F8FA] px-2.5 font-mono text-[12px] text-[#94A3B8]">agenda.app/</span>
+          <div className="mt-1 flex flex-col gap-2 border-t border-[#F1F2F5] pt-3">
+            <span className="text-[11.5px] font-bold text-[#475569]">Link público del salón</span>
+            {/* El link completo y de verdad (antes acá figuraba "agenda.app/", un dominio de
+                ejemplo que no existe): es lo que el salón reparte a sus clientes, así que tiene
+                que poder copiarse de un toque y no leerse a mano desde un campo de texto. */}
+            <div className="flex flex-col gap-2 rounded-[12px] border border-[#E2E5EC] bg-[#F8FAFC] p-3">
+              <a href={publicUrl} target="_blank" rel="noreferrer" className="break-all font-mono text-[12px] font-semibold text-[#0F172A] underline">
+                {publicUrl.replace(/^https?:\/\//, '')}
+              </a>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={copyPublicUrl} className="min-h-9 flex-1 rounded-[10px] bg-[#0F172A] px-3 text-[12.5px] font-bold text-white">
+                  Copiar link
+                </button>
+                <a
+                  href={whatsappShareUrl(`Reservá tu hora en ${tenant.name}: ${publicUrl}`)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex min-h-9 flex-1 items-center justify-center rounded-[10px] border border-[#E2E5EC] bg-white px-3 text-[12.5px] font-semibold text-[#0F172A]"
+                >
+                  Enviar por WhatsApp
+                </a>
+              </div>
+            </div>
+
+            <span className="text-[11.5px] font-bold text-[#475569]">Cambiar la parte final del link</span>
+            <div className="flex items-center overflow-hidden rounded-[10px] border border-[#D3D7E0] bg-white">
+              <span className="flex min-h-10 flex-none items-center bg-[#F7F8FA] px-2.5 font-mono text-[12px] text-[#94A3B8]">{publicHost}/</span>
               <input value={slug} onChange={(e) => setSlug(e.target.value)} className="min-h-10 min-w-0 flex-1 border-none px-2.5 font-mono text-[12.5px] text-[#0F172A]" />
             </div>
-            <p className="mt-1.5 text-[11.5px] text-[#64748B]">Los clientes reservan en agenda.app/{tenant.slug}. Si lo cambias, el link anterior sigue redirigiendo.</p>
-            <button type="button" onClick={saveSlug} disabled={slugSaving || slug === tenant.slug} className="mt-2 min-h-9 rounded-[9px] border border-[#E2E5EC] px-3 text-[12.5px] font-semibold disabled:opacity-50">
+            <p className="text-[11.5px] text-[#64748B]">Si lo cambiás, el link anterior sigue redirigiendo al nuevo.</p>
+            <button type="button" onClick={saveSlug} disabled={slugSaving || slug === tenant.slug} className="w-fit min-h-9 rounded-[9px] border border-[#E2E5EC] px-3 text-[12.5px] font-semibold disabled:opacity-50">
               {slugSaving ? 'Guardando…' : 'Actualizar link'}
             </button>
           </div>
