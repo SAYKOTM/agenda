@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { usePanelSession } from '../../features/panel/usePanelSession';
+import { authLinkType } from '../../lib/supabaseClient';
 import { hasActiveAccess } from '../../lib/subscription';
 import { createCheckoutSession } from '../../lib/api';
 import { useToast } from '../../components/Toast';
 import PanelOnboarding from './PanelOnboarding';
+import PanelSetPassword from './PanelSetPassword';
 import OfflineBanner from '../../components/panel/OfflineBanner';
 import { usePushMessages, playChime } from '../../features/pwa/usePushMessages';
 
@@ -34,6 +36,29 @@ export default function PanelLayout() {
   const toast = useToast();
   const { loading, session, professional, tenant, error, needsOnboarding, offline, signOut, refresh } = usePanelSession();
   const [startingCheckout, setStartingCheckout] = useState(false);
+
+  // Quien llega por el link del correo (invitación o recuperar contraseña) entra con sesión pero
+  // sin contraseña propia. Se anota en sessionStorage porque la pista vive en la URL y desaparece
+  // en el primer render: sin esto, un F5 saltea el paso y la persona queda sin poder entrar en
+  // ningún otro dispositivo.
+  const [needsPassword, setNeedsPassword] = useState(() => {
+    const fromLink = authLinkType === 'invite' || authLinkType === 'recovery';
+    try {
+      if (fromLink) sessionStorage.setItem('panel-needs-password', '1');
+      return fromLink || sessionStorage.getItem('panel-needs-password') === '1';
+    } catch {
+      return fromLink;
+    }
+  });
+
+  function dismissPasswordStep() {
+    try {
+      sessionStorage.removeItem('panel-needs-password');
+    } catch {
+      // almacenamiento bloqueado (modo privado): alcanza con el estado en memoria
+    }
+    setNeedsPassword(false);
+  }
 
   // Aviso llegado mientras el panel está abierto y a la vista: el service worker no muestra la
   // notificación del sistema en ese caso y manda el dato acá (ver public/sw.js). Va antes de
@@ -74,6 +99,9 @@ export default function PanelLayout() {
     );
   }
   if (!session) return <Navigate to="/panel/login" state={{ from: location.pathname }} replace />;
+  if (needsPassword) {
+    return <PanelSetPassword email={session.user.email} onDone={dismissPasswordStep} onSkip={dismissPasswordStep} />;
+  }
   if (needsOnboarding) return <PanelOnboarding email={session.user.email} onCreated={refresh} />;
   if (error || !professional) {
     return (

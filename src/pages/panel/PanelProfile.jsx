@@ -7,6 +7,7 @@ import { LOYALTY_TIERS } from '../../lib/loyalty';
 import NotificationsCard from '../../components/panel/NotificationsCard';
 import PhotoCarousel from '../../components/PhotoCarousel';
 import ThemePicker from '../../components/panel/ThemePicker';
+import PasswordForm from '../../components/panel/PasswordForm';
 import { copyText } from '../../lib/clipboard';
 import { professionalPublicUrl, tenantBookingUrl, whatsappShareUrl } from '../../lib/publicLinks';
 
@@ -346,6 +347,17 @@ export default function PanelProfile() {
               <span className="text-[#94A3B8]">Aún no tienes reseñas</span>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-[16px] border border-[#E2E5EC] bg-white p-4">
+        <div className="mb-1 text-[13.5px] font-bold">Contraseña</div>
+        <p className="mb-3 max-w-[520px] text-[12px] text-[#64748B]">
+          Si entraste desde el link de una invitación, tu cuenta todavía no tiene contraseña: podés seguir trabajando en
+          este navegador, pero no vas a poder entrar desde el teléfono ni desde la app instalada. Elegí una acá y lista.
+        </p>
+        <div className="max-w-[360px]">
+          <PasswordForm ctaLabel="Guardar contraseña" />
         </div>
       </div>
 
